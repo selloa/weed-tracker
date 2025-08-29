@@ -27,19 +27,100 @@ class WeedTracker {
         }, 60000); // Update every minute
     }
 
-    // Data Management
+    // Data Management with Error Handling
     loadEntries() {
-        const saved = localStorage.getItem('weedTrackerEntries');
-        return saved ? JSON.parse(saved) : [];
+        return this.safeLocalStorageOperation(() => {
+            const saved = localStorage.getItem('weedTrackerEntries');
+            if (!saved) return [];
+            
+            const parsed = JSON.parse(saved);
+            if (!Array.isArray(parsed)) {
+                console.warn('Invalid entries data found, resetting to empty array');
+                return [];
+            }
+            
+            // Validate each entry
+            return parsed.filter(entry => this.validateEntry(entry));
+        }, []);
     }
 
     saveEntries() {
-        localStorage.setItem('weedTrackerEntries', JSON.stringify(this.entries));
+        this.safeLocalStorageOperation(() => {
+            localStorage.setItem('weedTrackerEntries', JSON.stringify(this.entries));
+        });
     }
 
     loadGoals() {
-        const saved = localStorage.getItem('weedTrackerGoals');
-        return saved ? JSON.parse(saved) : {
+        try {
+            const saved = localStorage.getItem('weedTrackerGoals');
+            if (!saved) return this.getDefaultGoals();
+            
+            const parsed = JSON.parse(saved);
+            return this.validateGoals(parsed) ? parsed : this.getDefaultGoals();
+        } catch (error) {
+            console.error('Failed to load goals:', error);
+            this.showMessage('Failed to load goal settings. Using defaults.', 'error');
+            return this.getDefaultGoals();
+        }
+    }
+
+    saveGoals() {
+        try {
+            localStorage.setItem('weedTrackerGoals', JSON.stringify(this.goals));
+        } catch (error) {
+            console.error('Failed to save goals:', error);
+            this.showMessage('Failed to save goal settings. Please check your browser storage.', 'error');
+        }
+    }
+
+    loadSettings() {
+        try {
+            const saved = localStorage.getItem('weedTrackerSettings');
+            if (!saved) return this.getDefaultSettings();
+            
+            const parsed = JSON.parse(saved);
+            return this.validateSettings(parsed) ? parsed : this.getDefaultSettings();
+        } catch (error) {
+            console.error('Failed to load settings:', error);
+            this.showMessage('Failed to load settings. Using defaults.', 'error');
+            return this.getDefaultSettings();
+        }
+    }
+
+    saveSettings() {
+        try {
+            localStorage.setItem('weedTrackerSettings', JSON.stringify(this.settings));
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+            this.showMessage('Failed to save settings. Please check your browser storage.', 'error');
+        }
+    }
+
+    loadAlternatives() {
+        try {
+            const saved = localStorage.getItem('weedTrackerAlternatives');
+            if (!saved) return this.getDefaultAlternatives();
+            
+            const parsed = JSON.parse(saved);
+            return this.validateAlternatives(parsed) ? parsed : this.getDefaultAlternatives();
+        } catch (error) {
+            console.error('Failed to load alternatives:', error);
+            return this.getDefaultAlternatives();
+        }
+    }
+
+    saveAlternatives() {
+        try {
+            localStorage.setItem('weedTrackerAlternatives', JSON.stringify(this.alternatives));
+        } catch (error) {
+            console.error('Failed to save alternatives:', error);
+            // Don't show error for alternatives as it's not critical
+        }
+    }
+
+    // Default data structures
+    getDefaultGoals() {
+        return {
             weeklyAmount: 0,
             goalType: 'reduce',
             startDate: null,
@@ -48,20 +129,159 @@ class WeedTracker {
         };
     }
 
-    saveGoals() {
-        localStorage.setItem('weedTrackerGoals', JSON.stringify(this.goals));
-    }
-
-    loadSettings() {
-        const saved = localStorage.getItem('weedTrackerSettings');
-        return saved ? JSON.parse(saved) : {
+    getDefaultSettings() {
+        return {
             pricePerGram: 10,
             currency: 'USD'
         };
     }
 
-    saveSettings() {
-        localStorage.setItem('weedTrackerSettings', JSON.stringify(this.settings));
+    getDefaultAlternatives() {
+        return {
+            triedItems: [],
+            lastRefresh: null
+        };
+    }
+
+    // Data Validation Methods
+    validateEntry(entry) {
+        try {
+            // Check if entry is an object
+            if (!entry || typeof entry !== 'object') {
+                return false;
+            }
+
+            // Validate required fields
+            if (!entry.id || typeof entry.id !== 'number') {
+                return false;
+            }
+
+            if (!entry.amount || typeof entry.amount !== 'number' || entry.amount <= 0) {
+                return false;
+            }
+
+            if (!entry.method || typeof entry.method !== 'string') {
+                return false;
+            }
+
+            // Validate optional fields
+            if (entry.notes && typeof entry.notes !== 'string') {
+                return false;
+            }
+
+            if (entry.mood && typeof entry.mood !== 'string') {
+                return false;
+            }
+
+            if (!entry.timestamp || !this.isValidDate(entry.timestamp)) {
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Entry validation error:', error);
+            return false;
+        }
+    }
+
+    validateGoals(goals) {
+        try {
+            if (!goals || typeof goals !== 'object') {
+                return false;
+            }
+
+            // Validate required fields
+            if (typeof goals.weeklyAmount !== 'number' || goals.weeklyAmount < 0) {
+                return false;
+            }
+
+            if (!goals.goalType || !['reduce', 'maintain', 'quit', 'stash'].includes(goals.goalType)) {
+                return false;
+            }
+
+            if (goals.stashAmount !== undefined && (typeof goals.stashAmount !== 'number' || goals.stashAmount < 0)) {
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Goals validation error:', error);
+            return false;
+        }
+    }
+
+    validateSettings(settings) {
+        try {
+            if (!settings || typeof settings !== 'object') {
+                return false;
+            }
+
+            if (typeof settings.pricePerGram !== 'number' || settings.pricePerGram < 0) {
+                return false;
+            }
+
+            if (!settings.currency || typeof settings.currency !== 'string') {
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Settings validation error:', error);
+            return false;
+        }
+    }
+
+    validateAlternatives(alternatives) {
+        try {
+            if (!alternatives || typeof alternatives !== 'object') {
+                return false;
+            }
+
+            if (!Array.isArray(alternatives.triedItems)) {
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Alternatives validation error:', error);
+            return false;
+        }
+    }
+
+    isValidDate(dateString) {
+        try {
+            const date = new Date(dateString);
+            return date instanceof Date && !isNaN(date);
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // Utility function to check localStorage availability
+    isLocalStorageAvailable() {
+        try {
+            const test = '__localStorage_test__';
+            localStorage.setItem(test, test);
+            localStorage.removeItem(test);
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // Enhanced error handling for localStorage operations
+    safeLocalStorageOperation(operation, fallback = null) {
+        if (!this.isLocalStorageAvailable()) {
+            console.warn('localStorage is not available');
+            return fallback;
+        }
+
+        try {
+            return operation();
+        } catch (error) {
+            console.error('localStorage operation failed:', error);
+            return fallback;
+        }
     }
 
     // Event Listeners
@@ -86,53 +306,130 @@ class WeedTracker {
         });
     }
 
-    // Entry Management
+    // Entry Management with Validation and Sanitization
     addEntry() {
-        const form = document.getElementById('quickAddForm');
-        const formData = new FormData(form);
-        
-        const entry = {
-            id: Date.now(),
-            amount: parseFloat(document.getElementById('amount').value),
-            method: document.getElementById('method').value,
-            notes: document.getElementById('notes').value.trim(),
-            mood: document.getElementById('mood').value,
-            timestamp: document.getElementById('time').value,
-            createdAt: new Date().toISOString()
-        };
+        try {
+            const form = this.getElementSafely('quickAddForm');
+            if (!form) {
+                this.showMessage('Form not found. Please refresh the page.', 'error');
+                return;
+            }
+            
+            // Get form elements safely
+            const amountInput = this.getElementSafely('amount');
+            const methodInput = this.getElementSafely('method');
+            const notesInput = this.getElementSafely('notes');
+            const moodInput = this.getElementSafely('mood');
+            const timeInput = this.getElementSafely('time');
 
-        this.entries.unshift(entry);
-        this.saveEntries();
-        
-        // Reset form
-        form.reset();
-        this.setDefaultDateTime();
-        
-        // Update UI
-        this.updateDashboard();
-        this.renderEntries();
-        this.updateCompactChart(); // Update compact chart specifically
-        
-        // Show success message
-        this.showMessage('Entry added successfully!', 'success');
+            if (!amountInput || !methodInput || !timeInput) {
+                this.showMessage('Required form elements not found. Please refresh the page.', 'error');
+                return;
+            }
+            
+            // Validate and sanitize form data
+            const amount = parseFloat(amountInput.value);
+            const method = methodInput.value;
+            const notes = this.sanitizeInput(notesInput.value.trim());
+            const mood = moodInput.value;
+            const timestamp = timeInput.value;
+
+            // Validate required fields
+            if (!amount || amount <= 0 || amount > 1000) { // Reasonable upper limit
+                this.showMessage('Please enter a valid amount between 0.1 and 1000 grams.', 'error');
+                return;
+            }
+
+            if (!method || !['joint', 'bong', 'pipe', 'cigarette', 'vape', 'edible', 'other'].includes(method)) {
+                this.showMessage('Please select a valid consumption method.', 'error');
+                return;
+            }
+
+            if (!timestamp || !this.isValidDate(timestamp)) {
+                this.showMessage('Please enter a valid date and time.', 'error');
+                return;
+            }
+
+            // Validate mood if provided
+            if (mood && !['great', 'good', 'neutral', 'bad', 'terrible'].includes(mood)) {
+                this.showMessage('Please select a valid mood option.', 'error');
+                return;
+            }
+
+            const entry = {
+                id: Date.now(),
+                amount: amount,
+                method: method,
+                notes: notes,
+                mood: mood,
+                timestamp: timestamp,
+                createdAt: new Date().toISOString()
+            };
+
+            // Validate the complete entry
+            if (!this.validateEntry(entry)) {
+                this.showMessage('Invalid entry data. Please check your input.', 'error');
+                return;
+            }
+
+            this.entries.unshift(entry);
+            this.saveEntries();
+            
+            // Reset form
+            form.reset();
+            this.setDefaultDateTime();
+            
+            // Update UI
+            this.updateDashboard();
+            this.renderEntries();
+            this.updateCompactChart(); // Update compact chart specifically
+            
+            // Show success message
+            this.showMessage('Entry added successfully!', 'success');
+        } catch (error) {
+            console.error('Error adding entry:', error);
+            this.showMessage('Failed to add entry. Please try again.', 'error');
+        }
     }
 
     deleteEntry(id) {
-        this.entries = this.entries.filter(entry => entry.id !== id);
-        this.saveEntries();
-        this.updateDashboard();
-        this.renderEntries();
-        this.updateCompactChart(); // Update compact chart specifically
-        this.showMessage('Entry deleted successfully!', 'success');
+        try {
+            if (!id || typeof id !== 'number') {
+                this.showMessage('Invalid entry ID.', 'error');
+                return;
+            }
+
+            const initialLength = this.entries.length;
+            this.entries = this.entries.filter(entry => entry.id !== id);
+            
+            if (this.entries.length === initialLength) {
+                this.showMessage('Entry not found.', 'error');
+                return;
+            }
+
+            this.saveEntries();
+            this.updateDashboard();
+            this.renderEntries();
+            this.updateCompactChart(); // Update compact chart specifically
+            this.showMessage('Entry deleted successfully!', 'success');
+        } catch (error) {
+            console.error('Error deleting entry:', error);
+            this.showMessage('Failed to delete entry. Please try again.', 'error');
+        }
     }
 
-    // Dashboard Updates
+    // Dashboard Updates with Error Handling
     updateDashboard() {
-        this.updateTodayStats();
-        this.updateWeekStats();
-        this.updateGoalProgress();
-        this.updateStreak();
-        this.updateTimeSinceLastJoint();
+        try {
+            this.updateTodayStats();
+            this.updateWeekStats();
+            this.updateGoalProgress();
+            this.updateStreak();
+            this.updateTimeSinceLastJoint();
+        } catch (error) {
+            console.error('Error updating dashboard:', error);
+            this.showMessage('Failed to update dashboard. Please refresh the page.', 'error');
+        }
     }
 
     updateTodayStats() {
@@ -359,22 +656,33 @@ class WeedTracker {
         }
     }
 
-    // Entry Rendering
+    // Entry Rendering with Error Handling
     renderEntries() {
-        const container = document.getElementById('entriesContainer');
-        
-        if (this.entries.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-leaf"></i>
-                    <h3>No entries yet</h3>
-                    <p>Add your first entry to start tracking your journey</p>
-                </div>
-            `;
-            return;
-        }
+        try {
+            const container = document.getElementById('entriesContainer');
+            if (!container) {
+                console.error('Entries container not found');
+                return;
+            }
+            
+            if (this.entries.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-leaf"></i>
+                        <h3>No entries yet</h3>
+                        <p>Add your first entry to start tracking your journey</p>
+                    </div>
+                `;
+                return;
+            }
 
-        container.innerHTML = this.entries.slice(0, 20).map(entry => this.createEntryHTML(entry)).join('');
+            // Filter out invalid entries and create HTML
+            const validEntries = this.entries.slice(0, 20).filter(entry => this.validateEntry(entry));
+            container.innerHTML = validEntries.map(entry => this.createEntryHTML(entry)).join('');
+        } catch (error) {
+            console.error('Error rendering entries:', error);
+            this.showMessage('Failed to display entries. Please refresh the page.', 'error');
+        }
     }
 
     createEntryHTML(entry) {
@@ -429,36 +737,68 @@ class WeedTracker {
         return methodMap[method] || method;
     }
 
-    // Goal Management
+    // Goal Management with Validation
     saveGoal() {
-        const goalType = document.getElementById('goalType').value;
-        let goalData = {
-            goalType: goalType,
-            startDate: new Date().toISOString()
-        };
+        try {
+            const goalType = document.getElementById('goalType').value;
+            
+            // Validate goal type
+            if (!goalType || !['reduce', 'maintain', 'quit', 'stash'].includes(goalType)) {
+                this.showMessage('Please select a valid goal type.', 'error');
+                return;
+            }
 
-        if (goalType === 'stash') {
-            const stashAmount = parseFloat(document.getElementById('stashAmount').value);
-            goalData = {
-                ...goalData,
-                stashAmount: stashAmount,
-                stashStartDate: new Date().toISOString(),
-                weeklyAmount: 0 // Reset weekly amount for stash goals
+            let goalData = {
+                goalType: goalType,
+                startDate: new Date().toISOString()
             };
-        } else {
-            const weeklyGoal = parseFloat(document.getElementById('weeklyGoal').value);
-            goalData = {
-                ...goalData,
-                weeklyAmount: weeklyGoal,
-                stashAmount: 0 // Reset stash amount for weekly goals
-            };
+
+            if (goalType === 'stash') {
+                const stashAmount = parseFloat(document.getElementById('stashAmount').value);
+                
+                // Validate stash amount
+                if (!stashAmount || stashAmount <= 0) {
+                    this.showMessage('Please enter a valid stash amount greater than 0.', 'error');
+                    return;
+                }
+
+                goalData = {
+                    ...goalData,
+                    stashAmount: stashAmount,
+                    stashStartDate: new Date().toISOString(),
+                    weeklyAmount: 0 // Reset weekly amount for stash goals
+                };
+            } else {
+                const weeklyGoal = parseFloat(document.getElementById('weeklyGoal').value);
+                
+                // Validate weekly goal
+                if (!weeklyGoal || weeklyGoal < 0) {
+                    this.showMessage('Please enter a valid weekly goal amount (0 or greater).', 'error');
+                    return;
+                }
+
+                goalData = {
+                    ...goalData,
+                    weeklyAmount: weeklyGoal,
+                    stashAmount: 0 // Reset stash amount for weekly goals
+                };
+            }
+
+            // Validate the complete goal data
+            if (!this.validateGoals(goalData)) {
+                this.showMessage('Invalid goal data. Please check your input.', 'error');
+                return;
+            }
+
+            this.goals = goalData;
+            this.saveGoals();
+            this.updateGoalProgress();
+            this.closeGoalModal();
+            this.showMessage('Goal saved successfully!', 'success');
+        } catch (error) {
+            console.error('Error saving goal:', error);
+            this.showMessage('Failed to save goal. Please try again.', 'error');
         }
-
-        this.goals = goalData;
-        this.saveGoals();
-        this.updateGoalProgress();
-        this.closeGoalModal();
-        this.showMessage('Goal saved successfully!', 'success');
     }
 
     resetGoal() {
@@ -479,70 +819,197 @@ class WeedTracker {
         );
     }
 
-    // Utility Functions
+    // Utility Functions with Enhanced Safety
     setDefaultDateTime() {
-        const now = new Date();
-        const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-            .toISOString()
-            .slice(0, 16);
-        document.getElementById('time').value = localDateTime;
+        try {
+            const now = new Date();
+            const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16);
+            
+            const timeInput = document.getElementById('time');
+            if (timeInput) {
+                timeInput.value = localDateTime;
+            }
+        } catch (error) {
+            console.error('Error setting default date time:', error);
+        }
+    }
+
+    // Input sanitization
+    sanitizeInput(input, maxLength = 1000) {
+        if (typeof input !== 'string') {
+            return '';
+        }
+        
+        // Remove potentially dangerous characters and limit length
+        return input
+            .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+            .substring(0, maxLength)
+            .trim();
+    }
+
+    // Safe DOM element access
+    getElementSafely(id) {
+        try {
+            const element = document.getElementById(id);
+            if (!element) {
+                console.warn(`Element with id '${id}' not found`);
+            }
+            return element;
+        } catch (error) {
+            console.error(`Error accessing element '${id}':`, error);
+            return null;
+        }
     }
 
     showMessage(message, type = 'success') {
-        // Remove existing messages
-        const existingMessages = document.querySelectorAll('.message');
-        existingMessages.forEach(msg => msg.remove());
+        try {
+            // Remove existing messages
+            const existingMessages = document.querySelectorAll('.message');
+            existingMessages.forEach(msg => {
+                try {
+                    msg.remove();
+                } catch (error) {
+                    console.error('Error removing message:', error);
+                }
+            });
 
-        // Create new message
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}`;
-        messageDiv.textContent = message;
+            // Sanitize message
+            const sanitizedMessage = this.sanitizeInput(message, 200);
 
-        // Insert at top of main content
-        const mainContent = document.querySelector('.main-content');
-        mainContent.insertBefore(messageDiv, mainContent.firstChild);
+            // Create new message
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = sanitizedMessage;
 
-        // Auto remove after 3 seconds
-        setTimeout(() => {
-            messageDiv.remove();
-        }, 3000);
+            // Add icon based on type
+            const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ';
+            messageDiv.innerHTML = `<span class="message-icon">${icon}</span> ${sanitizedMessage}`;
+
+            // Append to body for floating effect
+            document.body.appendChild(messageDiv);
+
+            // Trigger animation by adding show class after a small delay
+            setTimeout(() => {
+                messageDiv.classList.add('show');
+            }, 10);
+
+            // Auto remove after appropriate time
+            const duration = type === 'error' ? 5000 : 3000; // Errors stay longer
+            setTimeout(() => {
+                messageDiv.classList.remove('show');
+                setTimeout(() => {
+                    try {
+                        messageDiv.remove();
+                    } catch (error) {
+                        console.error('Error removing message:', error);
+                    }
+                }, 300);
+            }, duration);
+
+            // Log message for debugging
+            console.log(`[${type.toUpperCase()}] ${sanitizedMessage}`);
+        } catch (error) {
+            console.error('Error showing message:', error);
+            // Fallback to alert if message system fails
+            alert(`${type.toUpperCase()}: ${message}`);
+        }
     }
 
-    // Export/Import
+    // Export/Import with Error Handling
     exportData() {
-        const data = {
-            entries: this.entries,
-            goals: this.goals,
-            settings: this.settings,
-            exportDate: new Date().toISOString()
-        };
+        try {
+            const data = {
+                entries: this.entries,
+                goals: this.goals,
+                settings: this.settings,
+                exportDate: new Date().toISOString()
+            };
 
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `weed-tracker-export-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+            // Validate data before export
+            if (!this.validateExportData(data)) {
+                this.showMessage('Data validation failed. Cannot export.', 'error');
+                return;
+            }
 
-        this.showMessage('Data exported successfully!', 'success');
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `weed-tracker-export-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            this.showMessage('Data exported successfully!', 'success');
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            this.showMessage('Failed to export data. Please try again.', 'error');
+        }
+    }
+
+    validateExportData(data) {
+        try {
+            if (!data || typeof data !== 'object') {
+                return false;
+            }
+
+            if (!Array.isArray(data.entries)) {
+                return false;
+            }
+
+            if (!this.validateGoals(data.goals)) {
+                return false;
+            }
+
+            if (!this.validateSettings(data.settings)) {
+                return false;
+            }
+
+            if (!data.exportDate || !this.isValidDate(data.exportDate)) {
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Export data validation error:', error);
+            return false;
+        }
     }
 
     clearData() {
-        this.showConfirmModal(
-            'Are you sure you want to clear all data? This action cannot be undone.',
-            () => {
-                this.entries = [];
-                this.goals = { weeklyAmount: 0, goalType: 'reduce', startDate: null };
-                this.saveEntries();
-                this.saveGoals();
-                this.updateDashboard();
-                this.renderEntries();
-                this.showMessage('All data cleared successfully!', 'success');
-            }
-        );
+        try {
+            this.showConfirmModal(
+                'Are you sure you want to clear all data? This action cannot be undone.',
+                () => {
+                    this.entries = [];
+                    this.goals = this.getDefaultGoals();
+                    this.alternatives = this.getDefaultAlternatives();
+                    
+                    // Clear localStorage
+                    try {
+                        localStorage.removeItem('weedTrackerEntries');
+                        localStorage.removeItem('weedTrackerGoals');
+                        localStorage.removeItem('weedTrackerAlternatives');
+                    } catch (error) {
+                        console.error('Error clearing localStorage:', error);
+                    }
+                    
+                    this.saveEntries();
+                    this.saveGoals();
+                    this.saveAlternatives();
+                    this.updateDashboard();
+                    this.renderEntries();
+                    this.renderAlternatives();
+                    this.showMessage('All data cleared successfully!', 'success');
+                }
+            );
+        } catch (error) {
+            console.error('Error clearing data:', error);
+            this.showMessage('Failed to clear data. Please try again.', 'error');
+        }
     }
 
     // Modal Management
@@ -605,18 +1072,6 @@ class WeedTracker {
     }
 
     // Alternatives Management
-    loadAlternatives() {
-        const saved = localStorage.getItem('weedTrackerAlternatives');
-        return saved ? JSON.parse(saved) : {
-            triedItems: [],
-            lastRefresh: null
-        };
-    }
-
-    saveAlternatives() {
-        localStorage.setItem('weedTrackerAlternatives', JSON.stringify(this.alternatives));
-    }
-
     getOralFixationAlternatives() {
         return [
             {
@@ -728,22 +1183,32 @@ class WeedTracker {
     }
 
     renderAlternatives() {
-        const oralContainer = document.getElementById('oralAlternatives');
-        const generalContainer = document.getElementById('generalAlternatives');
+        try {
+            const oralContainer = document.getElementById('oralAlternatives');
+            const generalContainer = document.getElementById('generalAlternatives');
 
-        // Get random suggestions (3 from each category)
-        const oralSuggestions = this.getRandomSuggestions(this.getOralFixationAlternatives(), 3);
-        const generalSuggestions = this.getRandomSuggestions(this.getGeneralAlternatives(), 3);
+            if (!oralContainer || !generalContainer) {
+                console.error('Alternative containers not found');
+                return;
+            }
 
-        // Render oral fixation alternatives
-        oralContainer.innerHTML = oralSuggestions.map(suggestion => 
-            this.createSuggestionHTML(suggestion, 'oral')
-        ).join('');
+            // Get random suggestions (3 from each category)
+            const oralSuggestions = this.getRandomSuggestions(this.getOralFixationAlternatives(), 3);
+            const generalSuggestions = this.getRandomSuggestions(this.getGeneralAlternatives(), 3);
 
-        // Render general alternatives
-        generalContainer.innerHTML = generalSuggestions.map(suggestion => 
-            this.createSuggestionHTML(suggestion, 'general')
-        ).join('');
+            // Render oral fixation alternatives
+            oralContainer.innerHTML = oralSuggestions.map(suggestion => 
+                this.createSuggestionHTML(suggestion, 'oral')
+            ).join('');
+
+            // Render general alternatives
+            generalContainer.innerHTML = generalSuggestions.map(suggestion => 
+                this.createSuggestionHTML(suggestion, 'general')
+            ).join('');
+        } catch (error) {
+            console.error('Error rendering alternatives:', error);
+            // Don't show error message for alternatives as it's not critical
+        }
     }
 
     getRandomSuggestions(suggestions, count) {
@@ -785,27 +1250,41 @@ class WeedTracker {
         this.showMessage('Select a specific suggestion to mark it as tried!', 'success');
     }
 
-    // Chart Management
+    // Chart Management with Error Handling
     initializeCharts() {
-        this.createCompactChart();
-        this.createWeeklyChart();
-        this.createTimeChart();
-        this.createMethodChart();
-        this.createMonthlyChart();
+        try {
+            this.createCompactChart();
+            this.createWeeklyChart();
+            this.createTimeChart();
+            this.createMethodChart();
+            this.createMonthlyChart();
+        } catch (error) {
+            console.error('Error initializing charts:', error);
+            this.showMessage('Failed to initialize charts. Some visualizations may not work.', 'error');
+        }
     }
 
     refreshGraphs() {
-        // Destroy existing charts
-        Object.values(this.charts).forEach(chart => {
-            if (chart) {
-                chart.destroy();
-            }
-        });
-        this.charts = {};
-        
-        // Recreate charts with fresh data
-        this.initializeCharts();
-        this.showMessage('Graphs refreshed successfully!', 'success');
+        try {
+            // Destroy existing charts
+            Object.values(this.charts).forEach(chart => {
+                if (chart && typeof chart.destroy === 'function') {
+                    try {
+                        chart.destroy();
+                    } catch (error) {
+                        console.error('Error destroying chart:', error);
+                    }
+                }
+            });
+            this.charts = {};
+            
+            // Recreate charts with fresh data
+            this.initializeCharts();
+            this.showMessage('Graphs refreshed successfully!', 'success');
+        } catch (error) {
+            console.error('Error refreshing graphs:', error);
+            this.showMessage('Failed to refresh graphs. Please try again.', 'error');
+        }
     }
 
     cycleChartView() {
@@ -1408,8 +1887,45 @@ function toggleExpandedView() {
     tracker.toggleExpandedView();
 }
 
-// Initialize the application
+// Initialize the application with error handling
 let tracker;
+
+// Global error handler
+window.addEventListener('error', (event) => {
+    console.error('Global error caught:', event.error);
+    if (tracker && typeof tracker.showMessage === 'function') {
+        tracker.showMessage('An unexpected error occurred. Please refresh the page.', 'error');
+    }
+});
+
+// Unhandled promise rejection handler
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+    if (tracker && typeof tracker.showMessage === 'function') {
+        tracker.showMessage('An unexpected error occurred. Please refresh the page.', 'error');
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-    tracker = new WeedTracker();
+    try {
+        // Check for required dependencies
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js is not loaded');
+            alert('Required library Chart.js is missing. Please check your internet connection and refresh the page.');
+            return;
+        }
+
+        // Initialize the tracker
+        tracker = new WeedTracker();
+        
+        // Verify initialization
+        if (!tracker) {
+            throw new Error('Failed to initialize WeedTracker');
+        }
+
+        console.log('Weed Tracker initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize Weed Tracker:', error);
+        alert('Failed to initialize the application. Please refresh the page or check your browser settings.');
+    }
 });
