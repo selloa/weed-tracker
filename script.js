@@ -16,6 +16,11 @@ class WeedTracker {
         this.updateDashboard();
         this.renderEntries();
         this.renderAlternatives();
+        
+        // Start timer to update time since last joint every minute
+        setInterval(() => {
+            this.updateTimeSinceLastJoint();
+        }, 60000); // Update every minute
     }
 
     // Data Management
@@ -119,6 +124,7 @@ class WeedTracker {
         this.updateWeekStats();
         this.updateGoalProgress();
         this.updateStreak();
+        this.updateTimeSinceLastJoint();
     }
 
     updateTodayStats() {
@@ -191,6 +197,13 @@ class WeedTracker {
         document.getElementById('streakType').textContent = streak.type;
     }
 
+    updateTimeSinceLastJoint() {
+        const timeSince = this.calculateTimeSinceLastJoint();
+        document.getElementById('timeSinceNumber').textContent = timeSince.value;
+        document.getElementById('timeSinceLabel').textContent = timeSince.unit;
+        document.getElementById('timeSinceText').textContent = timeSince.text;
+    }
+
     calculateStreak() {
         if (this.entries.length === 0) {
             return { count: 0, type: 'No streak yet' };
@@ -236,6 +249,56 @@ class WeedTracker {
             return { count: streakCount, type: 'day streak (including today)' };
         } else {
             return { count: streakCount, type: 'day streak (last entry yesterday)' };
+        }
+    }
+
+    calculateTimeSinceLastJoint() {
+        if (this.entries.length === 0) {
+            return {
+                value: 0,
+                unit: 'hours',
+                text: 'No usage yet'
+            };
+        }
+
+        // Find the most recent usage by looking at all entries and finding the latest timestamp
+        let mostRecentEntry = this.entries[0];
+        let mostRecentTime = new Date(mostRecentEntry.timestamp);
+        
+        for (const entry of this.entries) {
+            const entryTime = new Date(entry.timestamp);
+            if (entryTime > mostRecentTime) {
+                mostRecentTime = entryTime;
+                mostRecentEntry = entry;
+            }
+        }
+        
+        const now = new Date();
+        const timeDiff = now.getTime() - mostRecentTime.getTime();
+
+        // Convert to different time units
+        const minutes = Math.floor(timeDiff / (1000 * 60));
+        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+
+        if (days > 0) {
+            return {
+                value: days,
+                unit: 'days',
+                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
+            };
+        } else if (hours > 0) {
+            return {
+                value: hours,
+                unit: 'hours',
+                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
+            };
+        } else {
+            return {
+                value: minutes,
+                unit: 'minutes',
+                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
+            };
         }
     }
 

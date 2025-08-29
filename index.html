@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weed Tracker - Your Journey to Reduction</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>">
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -135,6 +136,16 @@
                             <span class="streak-label">days</span>
                         </div>
                         <p id="streakType">No streak yet</p>
+                    </div>
+
+                    <!-- Time Since Last Joint -->
+                    <div class="card dashboard-card">
+                        <h3><i class="fas fa-clock"></i> Time Since Last Usage</h3>
+                        <div class="time-since-info">
+                            <span class="time-since-number" id="timeSinceNumber">0</span>
+                            <span class="time-since-label" id="timeSinceLabel">hours</span>
+                        </div>
+                        <p id="timeSinceText">No entries yet</p>
                     </div>
                 </div>
             </section>

@@ -249,6 +249,33 @@ body {
     margin: 0;
 }
 
+/* Time Since Last Joint */
+.time-since-info {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.time-since-number {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #38b2ac;
+}
+
+.time-since-label {
+    font-size: 1.2rem;
+    color: #718096;
+    font-weight: 500;
+}
+
+#timeSinceText {
+    font-size: 0.875rem;
+    color: #718096;
+    margin: 0;
+}
+
 /* Section Headers */
 .section-header {
     display: flex;
@@ -494,6 +521,10 @@ body {
     }
     
     .streak-number {
+        font-size: 2rem;
+    }
+    
+    .time-since-number {
         font-size: 2rem;
     }
 }
