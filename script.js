@@ -6,6 +6,7 @@ class WeedTracker {
         this.entries = this.loadEntries();
         this.goals = this.loadGoals();
         this.settings = this.loadSettings();
+        this.alternatives = this.loadAlternatives();
         this.init();
     }
 
@@ -14,6 +15,7 @@ class WeedTracker {
         this.setDefaultDateTime();
         this.updateDashboard();
         this.renderEntries();
+        this.renderAlternatives();
     }
 
     // Data Management
@@ -429,6 +431,187 @@ class WeedTracker {
     closeConfirmModal() {
         document.getElementById('confirmModal').style.display = 'none';
     }
+
+    // Alternatives Management
+    loadAlternatives() {
+        const saved = localStorage.getItem('weedTrackerAlternatives');
+        return saved ? JSON.parse(saved) : {
+            triedItems: [],
+            lastRefresh: null
+        };
+    }
+
+    saveAlternatives() {
+        localStorage.setItem('weedTrackerAlternatives', JSON.stringify(this.alternatives));
+    }
+
+    getOralFixationAlternatives() {
+        return [
+            {
+                title: "Sugar-free gum",
+                description: "Chew sugar-free gum to satisfy oral fixation without calories",
+                icon: "fas fa-chewing-gum"
+            },
+            {
+                title: "Herbal tea",
+                description: "Sip on warm herbal tea with honey for a soothing experience",
+                icon: "fas fa-mug-hot"
+            },
+            {
+                title: "Crunchy vegetables",
+                description: "Snack on carrots, celery, or cucumber for satisfying crunch",
+                icon: "fas fa-carrot"
+            },
+            {
+                title: "Ice cubes",
+                description: "Suck on ice cubes or flavored ice for oral stimulation",
+                icon: "fas fa-snowflake"
+            },
+            {
+                title: "Hard candies",
+                description: "Sugar-free hard candies that last longer",
+                icon: "fas fa-candy-cane"
+            },
+            {
+                title: "Sunflower seeds",
+                description: "Shell and eat sunflower seeds for manual and oral activity",
+                icon: "fas fa-seedling"
+            },
+            {
+                title: "Fizzy water",
+                description: "Sparkling water with lemon or lime for bubbly sensation",
+                icon: "fas fa-glass-water"
+            },
+            {
+                title: "Frozen grapes",
+                description: "Freeze grapes for a cold, sweet treat that takes time to eat",
+                icon: "fas fa-grapes"
+            }
+        ];
+    }
+
+    getGeneralAlternatives() {
+        return [
+            {
+                title: "Take a walk",
+                description: "Go for a 10-15 minute walk to clear your mind and get fresh air",
+                icon: "fas fa-walking"
+            },
+            {
+                title: "Deep breathing",
+                description: "Practice 4-7-8 breathing: inhale 4, hold 7, exhale 8",
+                icon: "fas fa-lungs"
+            },
+            {
+                title: "Call a friend",
+                description: "Reach out to someone you trust for support and distraction",
+                icon: "fas fa-phone"
+            },
+            {
+                title: "Read a book",
+                description: "Immerse yourself in a good book to escape and relax",
+                icon: "fas fa-book"
+            },
+            {
+                title: "Listen to music",
+                description: "Put on your favorite playlist and let the music carry you",
+                icon: "fas fa-music"
+            },
+            {
+                title: "Do a puzzle",
+                description: "Crossword, Sudoku, or jigsaw puzzle to engage your mind",
+                icon: "fas fa-puzzle-piece"
+            },
+            {
+                title: "Take a shower",
+                description: "A warm shower can help relax and reset your mood",
+                icon: "fas fa-shower"
+            },
+            {
+                title: "Write in a journal",
+                description: "Express your thoughts and feelings on paper",
+                icon: "fas fa-pen"
+            },
+            {
+                title: "Stretch or yoga",
+                description: "Gentle stretching or yoga poses to release tension",
+                icon: "fas fa-yoga"
+            },
+            {
+                title: "Clean something",
+                description: "Organize a drawer or clean a small area to feel productive",
+                icon: "fas fa-broom"
+            },
+            {
+                title: "Draw or color",
+                description: "Creative activities can be very therapeutic and distracting",
+                icon: "fas fa-palette"
+            },
+            {
+                title: "Meditation",
+                description: "5-10 minutes of mindfulness meditation to center yourself",
+                icon: "fas fa-om"
+            }
+        ];
+    }
+
+    renderAlternatives() {
+        const oralContainer = document.getElementById('oralAlternatives');
+        const generalContainer = document.getElementById('generalAlternatives');
+
+        // Get random suggestions (3 from each category)
+        const oralSuggestions = this.getRandomSuggestions(this.getOralFixationAlternatives(), 3);
+        const generalSuggestions = this.getRandomSuggestions(this.getGeneralAlternatives(), 3);
+
+        // Render oral fixation alternatives
+        oralContainer.innerHTML = oralSuggestions.map(suggestion => 
+            this.createSuggestionHTML(suggestion, 'oral')
+        ).join('');
+
+        // Render general alternatives
+        generalContainer.innerHTML = generalSuggestions.map(suggestion => 
+            this.createSuggestionHTML(suggestion, 'general')
+        ).join('');
+    }
+
+    getRandomSuggestions(suggestions, count) {
+        const shuffled = [...suggestions].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, count);
+    }
+
+    createSuggestionHTML(suggestion, category) {
+        const isTried = this.alternatives.triedItems.includes(`${category}-${suggestion.title}`);
+        const triedClass = isTried ? ' tried' : '';
+        
+        return `
+            <div class="suggestion-item${triedClass}" 
+                 onclick="tracker.markSuggestionAsTried('${category}-${suggestion.title}')">
+                <i class="${suggestion.icon} suggestion-icon"></i>
+                <h4>${suggestion.title}</h4>
+                <p>${suggestion.description}</p>
+            </div>
+        `;
+    }
+
+    markSuggestionAsTried(suggestionId) {
+        if (!this.alternatives.triedItems.includes(suggestionId)) {
+            this.alternatives.triedItems.push(suggestionId);
+            this.saveAlternatives();
+            this.renderAlternatives();
+            this.showMessage('Great job trying an alternative!', 'success');
+        }
+    }
+
+    refreshAlternatives() {
+        this.alternatives.lastRefresh = new Date().toISOString();
+        this.saveAlternatives();
+        this.renderAlternatives();
+        this.showMessage('New suggestions loaded!', 'success');
+    }
+
+    markAsTried() {
+        this.showMessage('Select a specific suggestion to mark it as tried!', 'success');
+    }
 }
 
 // Global functions for HTML onclick handlers
@@ -450,6 +633,14 @@ function exportData() {
 
 function clearData() {
     tracker.clearData();
+}
+
+function refreshAlternatives() {
+    tracker.refreshAlternatives();
+}
+
+function markAsTried() {
+    tracker.markAsTried();
 }
 
 // Initialize the application
