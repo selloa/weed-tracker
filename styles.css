@@ -222,6 +222,20 @@ body {
     margin: 0;
 }
 
+.goal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.form-help {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.875rem;
+    color: #718096;
+    font-style: italic;
+}
+
 /* Streak Counter */
 .streak-info {
     display: flex;
@@ -490,6 +504,11 @@ body {
         justify-content: center;
     }
     
+    .goal-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
     .entry-item {
         flex-direction: column;
         align-items: stretch;
@@ -746,5 +765,159 @@ body {
     
     .suggestion-item p {
         font-size: 0.8rem;
+    }
+}
+
+/* Statistics Graph Panel Styles */
+.statistics-card {
+    /* Match the size of other dashboard cards */
+    text-align: center;
+}
+
+.statistics-controls {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-top: 8px;
+    margin-bottom: 0;
+}
+
+/* Compact View Styles */
+.compact-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.chart-info {
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+/* Removed h4 styles since we're using the main h3 title now */
+
+.chart-info p {
+    color: #718096;
+    font-size: 0.75rem;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.compact-chart-container {
+    position: relative;
+    height: 120px;
+    width: 100%;
+    max-width: 220px;
+}
+
+.compact-chart-container canvas {
+    max-height: 100%;
+    max-width: 100%;
+}
+
+/* Expanded View Styles */
+.expanded-view {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    z-index: 1000;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: none;
+}
+
+.graphs-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.graph-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.graph-card {
+    background: #f7fafc;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+}
+
+.graph-card h3 {
+    color: #2d3748;
+    margin-bottom: 16px;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chart-container {
+    position: relative;
+    height: 250px;
+    width: 100%;
+}
+
+.chart-container canvas {
+    max-height: 100%;
+    max-width: 100%;
+}
+
+/* Small button styles */
+.btn-sm {
+    padding: 4px 6px;
+    font-size: 0.75rem;
+    min-width: auto;
+    border-radius: 4px;
+}
+
+/* Responsive design for graphs */
+@media (max-width: 768px) {
+    .graph-row {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .graph-card {
+        padding: 16px;
+    }
+    
+    .chart-container {
+        height: 200px;
+    }
+    
+    .compact-chart-container {
+        height: 100px;
+        max-width: 180px;
+    }
+    
+    .btn-sm {
+        padding: 3px 5px;
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .chart-container {
+        height: 180px;
+    }
+    
+    .compact-chart-container {
+        height: 80px;
+        max-width: 140px;
+    }
+    
+    .btn-sm {
+        padding: 2px 4px;
+        font-size: 0.65rem;
     }
 }

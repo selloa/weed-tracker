@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -21,6 +22,43 @@
 
         <!-- Main Content -->
         <main class="main-content">
+            <!-- Alternatives Panel -->
+            <section class="alternatives-section">
+                <div class="card">
+                    <h2><i class="fas fa-lightbulb"></i> Alternative Suggestions</h2>
+                    <p class="section-description">Feeling the urge to smoke? Try these alternatives to help delay or replace your next session.</p>
+                    
+                    <div class="alternatives-grid">
+                        <!-- Oral Fixation Alternatives -->
+                        <div class="alternative-category">
+                            <h3><i class="fas fa-mouth"></i> Oral Fixation Alternatives</h3>
+                            <p class="category-description">Satisfy your oral fixation with these healthier options:</p>
+                            <div class="suggestions-list" id="oralAlternatives">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- General Alternatives -->
+                        <div class="alternative-category">
+                            <h3><i class="fas fa-heart"></i> General Alternatives</h3>
+                            <p class="category-description">Activities to distract and redirect your energy:</p>
+                            <div class="suggestions-list" id="generalAlternatives">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alternatives-actions">
+                        <button class="btn btn-secondary" onclick="refreshAlternatives()">
+                            <i class="fas fa-sync-alt"></i> New Suggestions
+                        </button>
+                        <button class="btn btn-primary" onclick="markAsTried()">
+                            <i class="fas fa-check"></i> I Tried This
+                        </button>
+                    </div>
+                </div>
+            </section>
+
             <!-- Quick Add Section -->
             <section class="quick-add-section">
                 <div class="card">
@@ -123,9 +161,14 @@
                             </div>
                             <p id="goalText">Set a weekly goal to track progress</p>
                         </div>
-                        <button class="btn btn-secondary" onclick="openGoalModal()">
-                            <i class="fas fa-cog"></i> Set Goal
-                        </button>
+                        <div class="goal-actions">
+                            <button class="btn btn-secondary" onclick="openGoalModal()">
+                                <i class="fas fa-cog"></i> Set Goal
+                            </button>
+                            <button class="btn btn-danger" onclick="resetGoal()" title="Reset current goal">
+                                <i class="fas fa-undo"></i> Reset
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Streak Counter -->
@@ -147,45 +190,65 @@
                         </div>
                         <p id="timeSinceText">No entries yet</p>
                     </div>
-                </div>
-            </section>
 
-            <!-- Alternatives Panel -->
-            <section class="alternatives-section">
-                <div class="card">
-                    <h2><i class="fas fa-lightbulb"></i> Alternative Suggestions</h2>
-                    <p class="section-description">Feeling the urge to smoke? Try these alternatives to help delay or replace your next session.</p>
-                    
-                    <div class="alternatives-grid">
-                        <!-- Oral Fixation Alternatives -->
-                        <div class="alternative-category">
-                            <h3><i class="fas fa-mouth"></i> Oral Fixation Alternatives</h3>
-                            <p class="category-description">Satisfy your oral fixation with these healthier options:</p>
-                            <div class="suggestions-list" id="oralAlternatives">
-                                <!-- Will be populated by JavaScript -->
+                    <!-- Statistics Graph Panel -->
+                    <div class="card dashboard-card statistics-card">
+                        <h3 id="dynamicChartTitle"><i class="fas fa-clock"></i> Usage by Time of Day</h3>
+                        
+                        <!-- Compact View -->
+                        <div class="compact-view" id="compactView">
+                            <div class="chart-info">
+                                <p id="currentChartDescription">Shows when you use most throughout the day</p>
                             </div>
-                        </div>
-
-                        <!-- General Alternatives -->
-                        <div class="alternative-category">
-                            <h3><i class="fas fa-heart"></i> General Alternatives</h3>
-                            <p class="category-description">Activities to distract and redirect your energy:</p>
-                            <div class="suggestions-list" id="generalAlternatives">
-                                <!-- Will be populated by JavaScript -->
+                            <div class="compact-chart-container">
+                                <canvas id="compactChart"></canvas>
+                            </div>
+                            <div class="statistics-controls">
+                                <button class="btn btn-secondary btn-sm" onclick="tracker.cycleChartView()" title="Cycle through chart views">
+                                    <i class="fas fa-rotate"></i>
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="tracker.toggleExpandedView()" title="Toggle expanded view">
+                                    <i class="fas fa-expand" id="expandIcon"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
-
-                    <div class="alternatives-actions">
-                        <button class="btn btn-secondary" onclick="refreshAlternatives()">
-                            <i class="fas fa-sync-alt"></i> New Suggestions
-                        </button>
-                        <button class="btn btn-primary" onclick="markAsTried()">
-                            <i class="fas fa-check"></i> I Tried This
-                        </button>
-                    </div>
                 </div>
             </section>
+
+            <!-- Expanded View (Outside the card for proper modal positioning) -->
+            <div class="expanded-view" id="expandedView" style="display: none;">
+                <div class="graphs-container">
+                    <div class="graph-row">
+                        <div class="graph-card">
+                            <h3><i class="fas fa-calendar-week"></i> Weekly Usage Trend</h3>
+                            <div class="chart-container">
+                                <canvas id="weeklyChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="graph-card">
+                            <h3><i class="fas fa-clock"></i> Usage by Time of Day</h3>
+                            <div class="chart-container">
+                                <canvas id="timeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="graph-row">
+                        <div class="graph-card">
+                            <h3><i class="fas fa-smoking"></i> Method Distribution</h3>
+                            <div class="chart-container">
+                                <canvas id="methodChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="graph-card">
+                            <h3><i class="fas fa-trending-up"></i> Monthly Overview</h3>
+                            <div class="chart-container">
+                                <canvas id="monthlyChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Recent Entries -->
             <section class="entries-section">
@@ -195,9 +258,6 @@
                         <div class="header-actions">
                             <button class="btn btn-secondary" onclick="exportData()">
                                 <i class="fas fa-download"></i> Export
-                            </button>
-                            <button class="btn btn-secondary" onclick="clearData()">
-                                <i class="fas fa-trash"></i> Clear All
                             </button>
                         </div>
                     </div>
@@ -218,16 +278,22 @@
             </div>
             <form id="goalForm" class="goal-form">
                 <div class="form-group">
-                    <label for="weeklyGoal">Weekly Amount Goal (grams)</label>
-                    <input type="number" id="weeklyGoal" step="0.1" min="0" placeholder="7.0">
-                </div>
-                <div class="form-group">
                     <label for="goalType">Goal Type</label>
-                    <select id="goalType">
+                    <select id="goalType" onchange="toggleGoalFields()">
                         <option value="reduce">Reduce Usage</option>
                         <option value="maintain">Maintain Current Level</option>
                         <option value="quit">Quit Completely</option>
+                        <option value="stash">Track Stash</option>
                     </select>
+                </div>
+                <div class="form-group" id="weeklyGoalGroup">
+                    <label for="weeklyGoal">Weekly Amount Goal (grams)</label>
+                    <input type="number" id="weeklyGoal" step="0.1" min="0" placeholder="7.0">
+                </div>
+                <div class="form-group" id="stashGoalGroup" style="display: none;">
+                    <label for="stashAmount">Current Stash Amount (grams)</label>
+                    <input type="number" id="stashAmount" step="0.1" min="0" placeholder="10.0">
+                    <small class="form-help">Enter how much weed you currently have</small>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeGoalModal()">Cancel</button>

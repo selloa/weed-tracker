@@ -7,6 +7,9 @@ class WeedTracker {
         this.goals = this.loadGoals();
         this.settings = this.loadSettings();
         this.alternatives = this.loadAlternatives();
+        this.charts = {}; // Store chart instances
+        this.currentChartIndex = 1; // Track current chart in compact view (1 = Time of Day)
+        this.isExpanded = false; // Track expanded state
         this.init();
     }
 
@@ -16,6 +19,7 @@ class WeedTracker {
         this.updateDashboard();
         this.renderEntries();
         this.renderAlternatives();
+        this.initializeCharts(); // Initialize charts
         
         // Start timer to update time since last joint every minute
         setInterval(() => {
@@ -38,7 +42,9 @@ class WeedTracker {
         return saved ? JSON.parse(saved) : {
             weeklyAmount: 0,
             goalType: 'reduce',
-            startDate: null
+            startDate: null,
+            stashAmount: 0,
+            stashStartDate: null
         };
     }
 
@@ -105,6 +111,7 @@ class WeedTracker {
         // Update UI
         this.updateDashboard();
         this.renderEntries();
+        this.updateCompactChart(); // Update compact chart specifically
         
         // Show success message
         this.showMessage('Entry added successfully!', 'success');
@@ -115,6 +122,7 @@ class WeedTracker {
         this.saveEntries();
         this.updateDashboard();
         this.renderEntries();
+        this.updateCompactChart(); // Update compact chart specifically
         this.showMessage('Entry deleted successfully!', 'success');
     }
 
@@ -128,19 +136,21 @@ class WeedTracker {
     }
 
     updateTodayStats() {
-        const today = new Date().toDateString();
-        const todayEntries = this.entries.filter(entry => {
-            const entryDate = new Date(entry.timestamp).toDateString();
-            return entryDate === today;
+        const now = new Date();
+        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        
+        const last24HoursEntries = this.entries.filter(entry => {
+            const entryTime = new Date(entry.timestamp);
+            return entryTime >= twentyFourHoursAgo && entryTime <= now;
         });
 
-        const todayCount = todayEntries.length;
-        const todayAmount = todayEntries.reduce((sum, entry) => sum + entry.amount, 0);
-        const todayCost = (todayAmount * this.settings.pricePerGram).toFixed(2);
+        const last24HoursCount = last24HoursEntries.length;
+        const last24HoursAmount = last24HoursEntries.reduce((sum, entry) => sum + entry.amount, 0);
+        const last24HoursCost = (last24HoursAmount * this.settings.pricePerGram).toFixed(2);
 
-        document.getElementById('todayCount').textContent = todayCount;
-        document.getElementById('todayAmount').textContent = todayAmount.toFixed(1) + 'g';
-        document.getElementById('todayCost').textContent = '$' + todayCost;
+        document.getElementById('todayCount').textContent = last24HoursCount;
+        document.getElementById('todayAmount').textContent = last24HoursAmount.toFixed(1) + 'g';
+        document.getElementById('todayCost').textContent = '$' + last24HoursCost;
     }
 
     updateWeekStats() {
@@ -163,6 +173,11 @@ class WeedTracker {
     }
 
     updateGoalProgress() {
+        if (this.goals.goalType === 'stash') {
+            this.updateStashProgress();
+            return;
+        }
+
         if (!this.goals.weeklyAmount || this.goals.weeklyAmount <= 0) {
             document.getElementById('goalProgress').style.width = '0%';
             document.getElementById('goalText').textContent = 'Set a weekly goal to track progress';
@@ -188,6 +203,33 @@ class WeedTracker {
             document.getElementById('goalText').textContent = `${remaining.toFixed(1)}g remaining this week`;
         } else {
             document.getElementById('goalText').textContent = `Goal exceeded by ${Math.abs(remaining).toFixed(1)}g`;
+        }
+    }
+
+    updateStashProgress() {
+        if (!this.goals.stashAmount || this.goals.stashAmount <= 0) {
+            document.getElementById('goalProgress').style.width = '0%';
+            document.getElementById('goalText').textContent = 'Set a stash goal to track your weed supply';
+            return;
+        }
+
+        // Calculate total usage since stash start date
+        const stashStartDate = this.goals.stashStartDate ? new Date(this.goals.stashStartDate) : new Date();
+        const entriesSinceStash = this.entries.filter(entry => {
+            const entryDate = new Date(entry.timestamp);
+            return entryDate >= stashStartDate;
+        });
+
+        const totalUsed = entriesSinceStash.reduce((sum, entry) => sum + entry.amount, 0);
+        const remainingStash = this.goals.stashAmount - totalUsed;
+        const progress = Math.min((totalUsed / this.goals.stashAmount) * 100, 100);
+
+        document.getElementById('goalProgress').style.width = progress + '%';
+        
+        if (remainingStash > 0) {
+            document.getElementById('goalText').textContent = `${remainingStash.toFixed(1)}g left in stash`;
+        } else {
+            document.getElementById('goalText').textContent = `Stash depleted by ${Math.abs(remainingStash).toFixed(1)}g`;
         }
     }
 
@@ -280,22 +322,37 @@ class WeedTracker {
         const minutes = Math.floor(timeDiff / (1000 * 60));
         const hours = Math.floor(timeDiff / (1000 * 60 * 60));
         const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+        const months = Math.floor(days / 30.44); // Average days per month
+        const years = Math.floor(days / 365.25); // Account for leap years
 
-        if (days > 0) {
+        // Determine the best unit to display with no more than 2 digits
+        if (years > 0) {
             return {
-                value: days,
+                value: Math.min(years, 99), // Cap at 99 years
+                unit: 'years',
+                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
+            };
+        } else if (months > 0) {
+            return {
+                value: Math.min(months, 99), // Cap at 99 months
+                unit: 'months',
+                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
+            };
+        } else if (days > 0) {
+            return {
+                value: Math.min(days, 99), // Cap at 99 days
                 unit: 'days',
                 text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
             };
         } else if (hours > 0) {
             return {
-                value: hours,
+                value: Math.min(hours, 99), // Cap at 99 hours
                 unit: 'hours',
                 text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
             };
         } else {
             return {
-                value: minutes,
+                value: Math.min(minutes, 99), // Cap at 99 minutes
                 unit: 'minutes',
                 text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
             };
@@ -374,19 +431,52 @@ class WeedTracker {
 
     // Goal Management
     saveGoal() {
-        const weeklyGoal = parseFloat(document.getElementById('weeklyGoal').value);
         const goalType = document.getElementById('goalType').value;
-
-        this.goals = {
-            weeklyAmount: weeklyGoal,
+        let goalData = {
             goalType: goalType,
             startDate: new Date().toISOString()
         };
 
+        if (goalType === 'stash') {
+            const stashAmount = parseFloat(document.getElementById('stashAmount').value);
+            goalData = {
+                ...goalData,
+                stashAmount: stashAmount,
+                stashStartDate: new Date().toISOString(),
+                weeklyAmount: 0 // Reset weekly amount for stash goals
+            };
+        } else {
+            const weeklyGoal = parseFloat(document.getElementById('weeklyGoal').value);
+            goalData = {
+                ...goalData,
+                weeklyAmount: weeklyGoal,
+                stashAmount: 0 // Reset stash amount for weekly goals
+            };
+        }
+
+        this.goals = goalData;
         this.saveGoals();
         this.updateGoalProgress();
         this.closeGoalModal();
         this.showMessage('Goal saved successfully!', 'success');
+    }
+
+    resetGoal() {
+        this.showConfirmModal(
+            'Are you sure you want to reset your current goal? This will clear your goal settings.',
+            () => {
+                this.goals = {
+                    weeklyAmount: 0,
+                    goalType: 'reduce',
+                    startDate: null,
+                    stashAmount: 0,
+                    stashStartDate: null
+                };
+                this.saveGoals();
+                this.updateGoalProgress();
+                this.showMessage('Goal reset successfully!', 'success');
+            }
+        );
     }
 
     // Utility Functions
@@ -460,10 +550,15 @@ class WeedTracker {
         const modal = document.getElementById('goalModal');
         const weeklyGoalInput = document.getElementById('weeklyGoal');
         const goalTypeSelect = document.getElementById('goalType');
+        const stashAmountInput = document.getElementById('stashAmount');
 
         // Pre-fill with current values
         weeklyGoalInput.value = this.goals.weeklyAmount || '';
         goalTypeSelect.value = this.goals.goalType || 'reduce';
+        stashAmountInput.value = this.goals.stashAmount || '';
+
+        // Show/hide appropriate fields based on current goal type
+        this.toggleGoalFields();
 
         modal.style.display = 'block';
     }
@@ -493,6 +588,20 @@ class WeedTracker {
 
     closeConfirmModal() {
         document.getElementById('confirmModal').style.display = 'none';
+    }
+
+    toggleGoalFields() {
+        const goalType = document.getElementById('goalType').value;
+        const weeklyGoalGroup = document.getElementById('weeklyGoalGroup');
+        const stashGoalGroup = document.getElementById('stashGoalGroup');
+
+        if (goalType === 'stash') {
+            weeklyGoalGroup.style.display = 'none';
+            stashGoalGroup.style.display = 'block';
+        } else {
+            weeklyGoalGroup.style.display = 'block';
+            stashGoalGroup.style.display = 'none';
+        }
     }
 
     // Alternatives Management
@@ -675,6 +784,583 @@ class WeedTracker {
     markAsTried() {
         this.showMessage('Select a specific suggestion to mark it as tried!', 'success');
     }
+
+    // Chart Management
+    initializeCharts() {
+        this.createCompactChart();
+        this.createWeeklyChart();
+        this.createTimeChart();
+        this.createMethodChart();
+        this.createMonthlyChart();
+    }
+
+    refreshGraphs() {
+        // Destroy existing charts
+        Object.values(this.charts).forEach(chart => {
+            if (chart) {
+                chart.destroy();
+            }
+        });
+        this.charts = {};
+        
+        // Recreate charts with fresh data
+        this.initializeCharts();
+        this.showMessage('Graphs refreshed successfully!', 'success');
+    }
+
+    cycleChartView() {
+        this.currentChartIndex = (this.currentChartIndex + 1) % 4;
+        this.updateCompactChart();
+        this.showMessage('Switched to next chart view', 'success');
+    }
+
+    toggleExpandedView() {
+        this.isExpanded = !this.isExpanded;
+        const expandedView = document.getElementById('expandedView');
+        const expandIcon = document.getElementById('expandIcon');
+        
+        if (this.isExpanded) {
+            expandedView.style.display = 'block';
+            expandIcon.className = 'fas fa-compress';
+            // Add backdrop
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop';
+            backdrop.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+                backdrop-filter: blur(5px);
+            `;
+            backdrop.onclick = () => this.toggleExpandedView();
+            document.body.appendChild(backdrop);
+        } else {
+            expandedView.style.display = 'none';
+            expandIcon.className = 'fas fa-expand';
+            // Remove backdrop
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+        }
+    }
+
+    createCompactChart() {
+        const ctx = document.getElementById('compactChart');
+        if (!ctx) return;
+
+        this.updateCompactChart();
+    }
+
+    updateCompactChart() {
+        const ctx = document.getElementById('compactChart');
+        if (!ctx) return;
+
+        // Destroy existing compact chart
+        if (this.charts.compact) {
+            this.charts.compact.destroy();
+        }
+
+        const chartTypes = [
+            { type: 'weekly', title: 'Weekly Usage Trend', description: 'Shows your usage patterns over the last 8 weeks', icon: 'fas fa-calendar-week' },
+            { type: 'time', title: 'Usage by Time of Day', description: 'Shows when you use most throughout the day', icon: 'fas fa-clock' },
+            { type: 'method', title: 'Method Distribution', description: 'Shows your preferred consumption methods', icon: 'fas fa-smoking' },
+            { type: 'monthly', title: 'Monthly Overview', description: 'Shows your monthly usage trends', icon: 'fas fa-trending-up' }
+        ];
+
+        const currentChart = chartTypes[this.currentChartIndex];
+        
+        // Update title and description
+        document.getElementById('dynamicChartTitle').innerHTML = `<i class="${currentChart.icon}"></i> ${currentChart.title}`;
+        document.getElementById('currentChartDescription').textContent = currentChart.description;
+
+        // Create chart based on current type
+        let chartConfig;
+        
+        switch (currentChart.type) {
+            case 'weekly':
+                chartConfig = this.getCompactWeeklyConfig();
+                break;
+            case 'time':
+                chartConfig = this.getCompactTimeConfig();
+                break;
+            case 'method':
+                chartConfig = this.getCompactMethodConfig();
+                break;
+            case 'monthly':
+                chartConfig = this.getCompactMonthlyConfig();
+                break;
+        }
+
+        this.charts.compact = new Chart(ctx, chartConfig);
+    }
+
+    createWeeklyChart() {
+        const ctx = document.getElementById('weeklyChart');
+        if (!ctx) return;
+
+        const data = this.getWeeklyData();
+        
+        this.charts.weekly = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Amount (g)',
+                    data: data.amounts,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: 'Entries',
+                    data: data.counts,
+                    borderColor: '#f56565',
+                    backgroundColor: 'rgba(245, 101, 101, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Amount (g)'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Entries'
+                        },
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                    }
+                }
+            }
+        });
+    }
+
+    createTimeChart() {
+        const ctx = document.getElementById('timeChart');
+        if (!ctx) return;
+
+        const data = this.getTimeOfDayData();
+        
+        this.charts.time = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Usage Frequency',
+                    data: data.values,
+                    backgroundColor: [
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(245, 101, 101, 0.8)',
+                        'rgba(72, 187, 120, 0.8)',
+                        'rgba(237, 137, 54, 0.8)',
+                        'rgba(159, 122, 234, 0.8)',
+                        'rgba(236, 72, 153, 0.8)'
+                    ],
+                    borderColor: [
+                        '#667eea',
+                        '#f56565',
+                        '#48bb78',
+                        '#ed8936',
+                        '#9f7aea',
+                        '#ec4899'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Entries'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    createMethodChart() {
+        const ctx = document.getElementById('methodChart');
+        if (!ctx) return;
+
+        const data = this.getMethodData();
+        
+        this.charts.method = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: [
+                        '#667eea',
+                        '#f56565',
+                        '#48bb78',
+                        '#ed8936',
+                        '#9f7aea',
+                        '#ec4899',
+                        '#38b2ac'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    createMonthlyChart() {
+        const ctx = document.getElementById('monthlyChart');
+        if (!ctx) return;
+
+        const data = this.getMonthlyData();
+        
+        this.charts.monthly = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Total Amount (g)',
+                    data: data.amounts,
+                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                    borderColor: '#667eea',
+                    borderWidth: 1
+                }, {
+                    label: 'Total Entries',
+                    data: data.counts,
+                    backgroundColor: 'rgba(245, 101, 101, 0.8)',
+                    borderColor: '#f56565',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Amount (g) / Entries'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Data preparation methods for charts
+    getWeeklyData() {
+        const weeks = [];
+        const amounts = [];
+        const counts = [];
+        
+        // Get last 8 weeks
+        for (let i = 7; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - (i * 7));
+            const weekStart = new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay());
+            const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+            
+            const weekEntries = this.entries.filter(entry => {
+                const entryDate = new Date(entry.timestamp);
+                return entryDate >= weekStart && entryDate < weekEnd;
+            });
+            
+            const weekAmount = weekEntries.reduce((sum, entry) => sum + entry.amount, 0);
+            const weekCount = weekEntries.length;
+            
+            weeks.push(`Week ${8-i}`);
+            amounts.push(weekAmount);
+            counts.push(weekCount);
+        }
+        
+        // If no data, show empty chart with placeholder
+        if (amounts.every(amount => amount === 0)) {
+            return { 
+                labels: weeks, 
+                amounts: [0, 0, 0, 0, 0, 0, 0, 0], 
+                counts: [0, 0, 0, 0, 0, 0, 0, 0] 
+            };
+        }
+        
+        return { labels: weeks, amounts, counts };
+    }
+
+    getTimeOfDayData() {
+        const timeSlots = [
+            'Early AM (12-6)',
+            'Morning (6-12)',
+            'Afternoon (12-6)',
+            'Evening (6-12)'
+        ];
+        const counts = [0, 0, 0, 0];
+        
+        this.entries.forEach(entry => {
+            const hour = new Date(entry.timestamp).getHours();
+            if (hour >= 0 && hour < 6) counts[0]++;
+            else if (hour >= 6 && hour < 12) counts[1]++;
+            else if (hour >= 12 && hour < 18) counts[2]++;
+            else counts[3]++;
+        });
+        
+        // If no data, show empty chart
+        if (counts.every(count => count === 0)) {
+            return { labels: timeSlots, values: [0, 0, 0, 0] };
+        }
+        
+        return { labels: timeSlots, values: counts };
+    }
+
+    getMethodData() {
+        const methodCounts = {};
+        
+        this.entries.forEach(entry => {
+            methodCounts[entry.method] = (methodCounts[entry.method] || 0) + 1;
+        });
+        
+        const labels = Object.keys(methodCounts).map(method => this.getMethodLabel(method));
+        const values = Object.values(methodCounts);
+        
+        // If no data, show placeholder
+        if (labels.length === 0) {
+            return { 
+                labels: ['No data yet'], 
+                values: [1] 
+            };
+        }
+        
+        return { labels, values };
+    }
+
+    getMonthlyData() {
+        const months = [];
+        const amounts = [];
+        const counts = [];
+        
+        // Get last 6 months
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date();
+            date.setMonth(date.getMonth() - i);
+            const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+            const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+            
+            const monthEntries = this.entries.filter(entry => {
+                const entryDate = new Date(entry.timestamp);
+                return entryDate >= monthStart && entryDate <= monthEnd;
+            });
+            
+            const monthAmount = monthEntries.reduce((sum, entry) => sum + entry.amount, 0);
+            const monthCount = monthEntries.length;
+            
+            months.push(date.toLocaleDateString('en-US', { month: 'short' }));
+            amounts.push(monthAmount);
+            counts.push(monthCount);
+        }
+        
+        // If no data, show empty chart
+        if (amounts.every(amount => amount === 0)) {
+            return { 
+                labels: months, 
+                amounts: [0, 0, 0, 0, 0, 0], 
+                counts: [0, 0, 0, 0, 0, 0] 
+            };
+        }
+        
+        return { labels: months, amounts, counts };
+    }
+
+    // Compact chart configurations
+    getCompactWeeklyConfig() {
+        const data = this.getWeeklyData();
+        return {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Amount (g)',
+                    data: data.amounts,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        display: false
+                    },
+                    x: {
+                        display: false
+                    }
+                }
+            }
+        };
+    }
+
+    getCompactTimeConfig() {
+        const data = this.getTimeOfDayData();
+        return {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: [
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(245, 101, 101, 0.8)',
+                        'rgba(72, 187, 120, 0.8)',
+                        'rgba(237, 137, 54, 0.8)'
+                    ],
+                    borderWidth: 1,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        };
+    }
+
+    getCompactMethodConfig() {
+        const data = this.getMethodData();
+        return {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: [
+                        '#667eea',
+                        '#f56565',
+                        '#48bb78',
+                        '#ed8936',
+                        '#9f7aea',
+                        '#ec4899',
+                        '#38b2ac'
+                    ],
+                    borderWidth: 1,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        };
+    }
+
+    getCompactMonthlyConfig() {
+        const data = this.getMonthlyData();
+        return {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Amount (g)',
+                    data: data.amounts,
+                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                    borderColor: '#667eea',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        display: false
+                    },
+                    x: {
+                        display: false
+                    }
+                }
+            }
+        };
+    }
 }
 
 // Global functions for HTML onclick handlers
@@ -684,6 +1370,14 @@ function openGoalModal() {
 
 function closeGoalModal() {
     tracker.closeGoalModal();
+}
+
+function resetGoal() {
+    tracker.resetGoal();
+}
+
+function toggleGoalFields() {
+    tracker.toggleGoalFields();
 }
 
 function closeConfirmModal() {
@@ -704,6 +1398,14 @@ function refreshAlternatives() {
 
 function markAsTried() {
     tracker.markAsTried();
+}
+
+function cycleChartView() {
+    tracker.cycleChartView();
+}
+
+function toggleExpandedView() {
+    tracker.toggleExpandedView();
 }
 
 // Initialize the application
