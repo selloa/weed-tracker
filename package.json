@@ -1,0 +1,31 @@
+{
+  "name": "weed-tracker",
+  "version": "1.0.0",
+  "description": "A modern web application to track cannabis usage and support reduction goals",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "npx http-server -p 8000",
+    "dev": "npx live-server --port=8000"
+  },
+  "keywords": [
+    "weed",
+    "cannabis",
+    "tracker",
+    "reduction",
+    "quit",
+    "health",
+    "wellness",
+    "web-app"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/weed-tracker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/weed-tracker/issues"
+  },
+  "homepage": "https://github.com/yourusername/weed-tracker#readme"
+}

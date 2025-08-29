@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weed Tracker - Your Journey to Reduction</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-leaf"></i> Weed Tracker</h1>
+                <p class="subtitle">Track your journey to reduction</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Quick Add Section -->
+            <section class="quick-add-section">
+                <div class="card">
+                    <h2><i class="fas fa-plus-circle"></i> Quick Add Entry</h2>
+                    <form id="quickAddForm" class="quick-add-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="amount">Amount (grams)</label>
+                                <input type="number" id="amount" step="0.1" min="0" placeholder="0.5" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="method">Method</label>
+                                <select id="method" required>
+                                    <option value="">Select method</option>
+                                    <option value="joint">Joint</option>
+                                    <option value="bong">Bong</option>
+                                    <option value="pipe">Pipe</option>
+                                    <option value="cigarette">Cigarette</option>
+                                    <option value="vape">Vape</option>
+                                    <option value="edible">Edible</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="notes">Notes (optional)</label>
+                            <textarea id="notes" placeholder="How are you feeling? Any observations?"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="mood">Mood (optional)</label>
+                                <select id="mood">
+                                    <option value="">Select mood</option>
+                                    <option value="great">😊 Great</option>
+                                    <option value="good">🙂 Good</option>
+                                    <option value="neutral">😐 Neutral</option>
+                                    <option value="bad">😔 Bad</option>
+                                    <option value="terrible">😢 Terrible</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="time">Time</label>
+                                <input type="datetime-local" id="time" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Add Entry
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Dashboard Section -->
+            <section class="dashboard-section">
+                <div class="dashboard-grid">
+                    <!-- Today's Summary -->
+                    <div class="card dashboard-card">
+                        <h3><i class="fas fa-calendar-day"></i> Today's Summary</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-value" id="todayCount">0</span>
+                                <span class="stat-label">Entries</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="todayAmount">0g</span>
+                                <span class="stat-label">Total</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="todayCost">$0</span>
+                                <span class="stat-label">Est. Cost</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Progress -->
+                    <div class="card dashboard-card">
+                        <h3><i class="fas fa-chart-line"></i> This Week</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-value" id="weekCount">0</span>
+                                <span class="stat-label">Entries</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="weekAmount">0g</span>
+                                <span class="stat-label">Total</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="weekAvg">0g</span>
+                                <span class="stat-label">Daily Avg</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Goal Progress -->
+                    <div class="card dashboard-card">
+                        <h3><i class="fas fa-target"></i> Goal Progress</h3>
+                        <div class="goal-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="goalProgress"></div>
+                            </div>
+                            <p id="goalText">Set a weekly goal to track progress</p>
+                        </div>
+                        <button class="btn btn-secondary" onclick="openGoalModal()">
+                            <i class="fas fa-cog"></i> Set Goal
+                        </button>
+                    </div>
+
+                    <!-- Streak Counter -->
+                    <div class="card dashboard-card">
+                        <h3><i class="fas fa-fire"></i> Current Streak</h3>
+                        <div class="streak-info">
+                            <span class="streak-number" id="currentStreak">0</span>
+                            <span class="streak-label">days</span>
+                        </div>
+                        <p id="streakType">No streak yet</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Entries -->
+            <section class="entries-section">
+                <div class="card">
+                    <div class="section-header">
+                        <h2><i class="fas fa-history"></i> Recent Entries</h2>
+                        <div class="header-actions">
+                            <button class="btn btn-secondary" onclick="exportData()">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearData()">
+                                <i class="fas fa-trash"></i> Clear All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="entries-container" id="entriesContainer">
+                        <!-- Entries will be populated here -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Goal Setting Modal -->
+    <div id="goalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-target"></i> Set Weekly Goal</h3>
+                <span class="close" onclick="closeGoalModal()">&times;</span>
+            </div>
+            <form id="goalForm" class="goal-form">
+                <div class="form-group">
+                    <label for="weeklyGoal">Weekly Amount Goal (grams)</label>
+                    <input type="number" id="weeklyGoal" step="0.1" min="0" placeholder="7.0">
+                </div>
+                <div class="form-group">
+                    <label for="goalType">Goal Type</label>
+                    <select id="goalType">
+                        <option value="reduce">Reduce Usage</option>
+                        <option value="maintain">Maintain Current Level</option>
+                        <option value="quit">Quit Completely</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeGoalModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Goal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Confirm Action</h3>
+                <span class="close" onclick="closeConfirmModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Are you sure you want to perform this action?</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn btn-danger" id="confirmButton">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
