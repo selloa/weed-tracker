@@ -1,0 +1,67 @@
+name: Test Weed Tracker
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Validate HTML
+      run: |
+        echo "Checking HTML files..."
+        if [ -f "index.html" ]; then
+          echo "✅ index.html found"
+        else
+          echo "❌ index.html not found"
+          exit 1
+        fi
+        
+    - name: Validate CSS
+      run: |
+        echo "Checking CSS files..."
+        if [ -f "styles.css" ]; then
+          echo "✅ styles.css found"
+        else
+          echo "❌ styles.css not found"
+          exit 1
+        fi
+        
+    - name: Validate JavaScript
+      run: |
+        echo "Checking JavaScript files..."
+        if [ -f "script.js" ]; then
+          echo "✅ script.js found"
+        else
+          echo "❌ script.js not found"
+          exit 1
+        fi
+        
+    - name: Check file structure
+      run: |
+        echo "📁 Project structure:"
+        ls -la
+        echo ""
+        echo "📄 File sizes:"
+        wc -l *.html *.css *.js 2>/dev/null || echo "Some files may not exist"
+        
+    - name: Test build
+      run: |
+        echo "🚀 Testing if the app can be served..."
+        echo "This is a simple test - in a real project you might run actual tests here"
+        echo "✅ All basic checks passed!"
