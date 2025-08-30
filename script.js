@@ -631,35 +631,37 @@ class WeedTracker {
         const years = Math.floor(days / 365.25); // Account for leap years
 
         // Determine the best unit to display with no more than 2 digits
+        const timeOfDay = mostRecentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
         if (years > 0) {
             return {
                 value: Math.min(years, 99), // Cap at 99 years
                 unit: 'years',
-                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
+                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)} at ${timeOfDay}`
             };
         } else if (months > 0) {
             return {
                 value: Math.min(months, 99), // Cap at 99 months
                 unit: 'months',
-                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
+                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)} at ${timeOfDay}`
             };
         } else if (days > 0) {
             return {
                 value: Math.min(days, 99), // Cap at 99 days
                 unit: 'days',
-                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
+                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)} at ${timeOfDay}`
             };
         } else if (hours > 0) {
             return {
                 value: Math.min(hours, 99), // Cap at 99 hours
                 unit: 'hours',
-                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
+                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)} at ${timeOfDay}`
             };
         } else {
             return {
                 value: Math.min(minutes, 99), // Cap at 99 minutes
                 unit: 'minutes',
-                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)}`
+                text: `Last usage: ${mostRecentEntry.amount}g ${this.getMethodLabel(mostRecentEntry.method)} at ${timeOfDay}`
             };
         }
     }
