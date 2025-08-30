@@ -10,6 +10,7 @@ class WeedTracker {
         this.charts = {}; // Store chart instances
         this.currentChartIndex = 1; // Track current chart in compact view (1 = Time of Day)
         this.isExpanded = false; // Track expanded state
+        this.timeManuallyChanged = false; // Track if user manually changed the time
         this.init();
     }
 
@@ -303,6 +304,14 @@ class WeedTracker {
             this.saveGoal();
         });
 
+        // Time input change listener
+        const timeInput = document.getElementById('time');
+        if (timeInput) {
+            timeInput.addEventListener('input', () => {
+                this.timeManuallyChanged = true;
+            });
+        }
+
         // Modal close events
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
@@ -331,9 +340,6 @@ class WeedTracker {
                 this.showMessage('Required form elements not found. Please refresh the page.', 'error');
                 return;
             }
-            
-            // Update time field to current time before processing
-            this.setDefaultDateTime();
             
             // Validate and sanitize form data
             const amount = parseFloat(amountInput.value);
@@ -386,6 +392,7 @@ class WeedTracker {
             // Reset form
             form.reset();
             this.setDefaultDateTime();
+            this.timeManuallyChanged = false; // Reset the manual change flag
             
             // Update UI
             this.updateDashboard();
@@ -851,8 +858,8 @@ class WeedTracker {
         try {
             const timeInput = document.getElementById('time');
             if (timeInput) {
-                // Only update if the input is not focused (user is not actively editing it)
-                if (document.activeElement !== timeInput) {
+                // Only update if the input is not focused AND user hasn't manually changed it
+                if (document.activeElement !== timeInput && !this.timeManuallyChanged) {
                     const now = new Date();
                     const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
                         .toISOString()
