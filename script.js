@@ -25,6 +25,11 @@ class WeedTracker {
         setInterval(() => {
             this.updateTimeSinceLastJoint();
         }, 60000); // Update every minute
+        
+        // Start timer to update time field in real-time (every second)
+        setInterval(() => {
+            this.updateTimeField();
+        }, 1000); // Update every second
     }
 
     // Data Management with Error Handling
@@ -326,6 +331,9 @@ class WeedTracker {
                 this.showMessage('Required form elements not found. Please refresh the page.', 'error');
                 return;
             }
+            
+            // Update time field to current time before processing
+            this.setDefaultDateTime();
             
             // Validate and sanitize form data
             const amount = parseFloat(amountInput.value);
@@ -833,6 +841,25 @@ class WeedTracker {
             }
         } catch (error) {
             console.error('Error setting default date time:', error);
+        }
+    }
+
+    // Update time field in real-time
+    updateTimeField() {
+        try {
+            const timeInput = document.getElementById('time');
+            if (timeInput) {
+                // Only update if the input is not focused (user is not actively editing it)
+                if (document.activeElement !== timeInput) {
+                    const now = new Date();
+                    const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+                        .toISOString()
+                        .slice(0, 16);
+                    timeInput.value = localDateTime;
+                }
+            }
+        } catch (error) {
+            console.error('Error updating time field:', error);
         }
     }
 
