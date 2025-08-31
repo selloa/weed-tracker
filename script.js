@@ -467,12 +467,12 @@ class WeedTracker {
 
     updateWeekStats() {
         const now = new Date();
-        const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-        const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        // Calculate last 7 days instead of current week
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
         const weekEntries = this.entries.filter(entry => {
             const entryDate = new Date(entry.timestamp);
-            return entryDate >= weekStart && entryDate < weekEnd;
+            return entryDate >= sevenDaysAgo && entryDate <= now;
         });
 
         const weekCount = weekEntries.length;
@@ -497,12 +497,12 @@ class WeedTracker {
         }
 
         const now = new Date();
-        const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-        const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        // Calculate last 7 days instead of current week
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
         const weekEntries = this.entries.filter(entry => {
             const entryDate = new Date(entry.timestamp);
-            return entryDate >= weekStart && entryDate < weekEnd;
+            return entryDate >= sevenDaysAgo && entryDate <= now;
         });
 
         const weekAmount = weekEntries.reduce((sum, entry) => sum + entry.amount, 0);
@@ -983,6 +983,174 @@ class WeedTracker {
         } catch (error) {
             console.error('Error exporting data:', error);
             this.showMessage('Failed to export data. Please try again.', 'error');
+        }
+    }
+
+    importData() {
+        try {
+            // Create file input element
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.json';
+            fileInput.style.display = 'none';
+            
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) {
+                    return;
+                }
+
+                // Validate file type
+                if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+                    this.showMessage('Please select a valid JSON file.', 'error');
+                    return;
+                }
+
+                // Validate file size (max 10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    this.showMessage('File is too large. Please select a file smaller than 10MB.', 'error');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        
+                        // Validate imported data structure
+                        if (!this.validateImportData(importedData)) {
+                            this.showMessage('Invalid data format. Please select a valid export file.', 'error');
+                            return;
+                        }
+
+                        // Show confirmation modal with import details
+                        this.showImportConfirmation(importedData);
+                        
+                    } catch (error) {
+                        console.error('Error parsing imported file:', error);
+                        this.showMessage('Failed to parse the file. Please check if it\'s a valid export file.', 'error');
+                    }
+                };
+
+                reader.onerror = () => {
+                    this.showMessage('Failed to read the file. Please try again.', 'error');
+                };
+
+                reader.readAsText(file);
+            });
+
+            // Trigger file selection
+            document.body.appendChild(fileInput);
+            fileInput.click();
+            document.body.removeChild(fileInput);
+            
+        } catch (error) {
+            console.error('Error importing data:', error);
+            this.showMessage('Failed to import data. Please try again.', 'error');
+        }
+    }
+
+    validateImportData(data) {
+        try {
+            if (!data || typeof data !== 'object') {
+                return false;
+            }
+
+            // Check for required fields
+            if (!Array.isArray(data.entries)) {
+                return false;
+            }
+
+            if (!this.validateGoals(data.goals)) {
+                return false;
+            }
+
+            if (!this.validateSettings(data.settings)) {
+                return false;
+            }
+
+            // Validate each entry in the imported data
+            for (const entry of data.entries) {
+                if (!this.validateEntry(entry)) {
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Import data validation error:', error);
+            return false;
+        }
+    }
+
+    showImportConfirmation(importedData) {
+        const entryCount = importedData.entries.length;
+        const exportDate = importedData.exportDate ? new Date(importedData.exportDate).toLocaleDateString() : 'Unknown';
+        
+        const message = `Import ${entryCount} entries from ${exportDate}?\n\nThis will replace your current data. Make sure to export your current data first if you want to keep it.`;
+        
+        this.showConfirmModal(message, () => {
+            this.performImport(importedData);
+        });
+    }
+
+    performImport(importedData) {
+        try {
+            // Backup current data before import
+            const backupData = {
+                entries: [...this.entries],
+                goals: { ...this.goals },
+                settings: { ...this.settings },
+                backupDate: new Date().toISOString()
+            };
+
+            // Store backup in localStorage with timestamp
+            const backupKey = `weedTrackerBackup_${Date.now()}`;
+            localStorage.setItem(backupKey, JSON.stringify(backupData));
+
+            // Import the new data
+            this.entries = [...importedData.entries];
+            this.goals = { ...importedData.goals };
+            this.settings = { ...importedData.settings };
+
+            // Save imported data
+            this.saveEntries();
+            this.saveGoals();
+            this.saveSettings();
+
+            // Update UI
+            this.updateDashboard();
+            this.renderEntries();
+            this.initializeCharts(); // Reinitialize charts with new data
+
+            this.showMessage(`Successfully imported ${importedData.entries.length} entries!`, 'success');
+            
+            // Clean up old backups (keep only last 5)
+            this.cleanupOldBackups();
+            
+        } catch (error) {
+            console.error('Error performing import:', error);
+            this.showMessage('Failed to import data. Please try again.', 'error');
+        }
+    }
+
+    cleanupOldBackups() {
+        try {
+            const backupKeys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('weedTrackerBackup_')) {
+                    backupKeys.push(key);
+                }
+            }
+
+            // Sort by timestamp (newest first) and keep only last 5
+            backupKeys.sort().reverse();
+            for (let i = 5; i < backupKeys.length; i++) {
+                localStorage.removeItem(backupKeys[i]);
+            }
+        } catch (error) {
+            console.error('Error cleaning up backups:', error);
         }
     }
 
@@ -1901,6 +2069,10 @@ function closeConfirmModal() {
 
 function exportData() {
     tracker.exportData();
+}
+
+function importData() {
+    tracker.importData();
 }
 
 function clearData() {
