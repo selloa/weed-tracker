@@ -988,6 +988,19 @@ class WeedTracker {
 
     importData() {
         try {
+            // Check if required methods are available
+            if (typeof this.showMessage !== 'function') {
+                console.error('showMessage method not available');
+                alert('Application not fully loaded. Please refresh the page and try again.');
+                return;
+            }
+
+            if (typeof this.showConfirmModal !== 'function') {
+                console.error('showConfirmModal method not available');
+                this.showMessage('Application not fully loaded. Please refresh the page and try again.', 'error');
+                return;
+            }
+
             // Create file input element
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
@@ -995,48 +1008,53 @@ class WeedTracker {
             fileInput.style.display = 'none';
             
             fileInput.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (!file) {
-                    return;
-                }
-
-                // Validate file type
-                if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-                    this.showMessage('Please select a valid JSON file.', 'error');
-                    return;
-                }
-
-                // Validate file size (max 10MB)
-                if (file.size > 10 * 1024 * 1024) {
-                    this.showMessage('File is too large. Please select a file smaller than 10MB.', 'error');
-                    return;
-                }
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const importedData = JSON.parse(e.target.result);
-                        
-                        // Validate imported data structure
-                        if (!this.validateImportData(importedData)) {
-                            this.showMessage('Invalid data format. Please select a valid export file.', 'error');
-                            return;
-                        }
-
-                        // Show confirmation modal with import details
-                        this.showImportConfirmation(importedData);
-                        
-                    } catch (error) {
-                        console.error('Error parsing imported file:', error);
-                        this.showMessage('Failed to parse the file. Please check if it\'s a valid export file.', 'error');
+                try {
+                    const file = event.target.files[0];
+                    if (!file) {
+                        return;
                     }
-                };
 
-                reader.onerror = () => {
-                    this.showMessage('Failed to read the file. Please try again.', 'error');
-                };
+                    // Validate file type
+                    if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+                        this.showMessage('Please select a valid JSON file.', 'error');
+                        return;
+                    }
 
-                reader.readAsText(file);
+                    // Validate file size (max 10MB)
+                    if (file.size > 10 * 1024 * 1024) {
+                        this.showMessage('File is too large. Please select a file smaller than 10MB.', 'error');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const importedData = JSON.parse(e.target.result);
+                            
+                            // Validate imported data structure
+                            if (!this.validateImportData(importedData)) {
+                                this.showMessage('Invalid data format. Please select a valid export file.', 'error');
+                                return;
+                            }
+
+                            // Show confirmation modal with import details
+                            this.showImportConfirmation(importedData);
+                            
+                        } catch (error) {
+                            console.error('Error parsing imported file:', error);
+                            this.showMessage('Failed to parse the file. Please check if it\'s a valid export file.', 'error');
+                        }
+                    };
+
+                    reader.onerror = () => {
+                        this.showMessage('Failed to read the file. Please try again.', 'error');
+                    };
+
+                    reader.readAsText(file);
+                } catch (error) {
+                    console.error('Error in file change handler:', error);
+                    this.showMessage('Error processing file. Please try again.', 'error');
+                }
             });
 
             // Trigger file selection
@@ -1046,7 +1064,11 @@ class WeedTracker {
             
         } catch (error) {
             console.error('Error importing data:', error);
-            this.showMessage('Failed to import data. Please try again.', 'error');
+            if (typeof this.showMessage === 'function') {
+                this.showMessage('Failed to import data. Please try again.', 'error');
+            } else {
+                alert('Failed to import data. Please refresh the page and try again.');
+            }
         }
     }
 
@@ -2048,51 +2070,99 @@ class WeedTracker {
 
 // Global functions for HTML onclick handlers
 function openGoalModal() {
-    tracker.openGoalModal();
+    if (tracker && typeof tracker.openGoalModal === 'function') {
+        tracker.openGoalModal();
+    } else {
+        console.error('Tracker not initialized or openGoalModal not available');
+    }
 }
 
 function closeGoalModal() {
-    tracker.closeGoalModal();
+    if (tracker && typeof tracker.closeGoalModal === 'function') {
+        tracker.closeGoalModal();
+    } else {
+        console.error('Tracker not initialized or closeGoalModal not available');
+    }
 }
 
 function resetGoal() {
-    tracker.resetGoal();
+    if (tracker && typeof tracker.resetGoal === 'function') {
+        tracker.resetGoal();
+    } else {
+        console.error('Tracker not initialized or resetGoal not available');
+    }
 }
 
 function toggleGoalFields() {
-    tracker.toggleGoalFields();
+    if (tracker && typeof tracker.toggleGoalFields === 'function') {
+        tracker.toggleGoalFields();
+    } else {
+        console.error('Tracker not initialized or toggleGoalFields not available');
+    }
 }
 
 function closeConfirmModal() {
-    tracker.closeConfirmModal();
+    if (tracker && typeof tracker.closeConfirmModal === 'function') {
+        tracker.closeConfirmModal();
+    } else {
+        console.error('Tracker not initialized or closeConfirmModal not available');
+    }
 }
 
 function exportData() {
-    tracker.exportData();
+    if (tracker && typeof tracker.exportData === 'function') {
+        tracker.exportData();
+    } else {
+        console.error('Tracker not initialized or exportData not available');
+    }
 }
 
 function importData() {
-    tracker.importData();
+    if (tracker && typeof tracker.importData === 'function') {
+        tracker.importData();
+    } else {
+        console.error('Tracker not initialized or importData not available');
+    }
 }
 
 function clearData() {
-    tracker.clearData();
+    if (tracker && typeof tracker.clearData === 'function') {
+        tracker.clearData();
+    } else {
+        console.error('Tracker not initialized or clearData not available');
+    }
 }
 
 function refreshAlternatives() {
-    tracker.refreshAlternatives();
+    if (tracker && typeof tracker.refreshAlternatives === 'function') {
+        tracker.refreshAlternatives();
+    } else {
+        console.error('Tracker not initialized or refreshAlternatives not available');
+    }
 }
 
 function markAsTried() {
-    tracker.markAsTried();
+    if (tracker && typeof tracker.markAsTried === 'function') {
+        tracker.markAsTried();
+    } else {
+        console.error('Tracker not initialized or markAsTried not available');
+    }
 }
 
 function cycleChartView() {
-    tracker.cycleChartView();
+    if (tracker && typeof tracker.cycleChartView === 'function') {
+        tracker.cycleChartView();
+    } else {
+        console.error('Tracker not initialized or cycleChartView not available');
+    }
 }
 
 function toggleExpandedView() {
-    tracker.toggleExpandedView();
+    if (tracker && typeof tracker.toggleExpandedView === 'function') {
+        tracker.toggleExpandedView();
+    } else {
+        console.error('Tracker not initialized or toggleExpandedView not available');
+    }
 }
 
 // Initialize the application with error handling
