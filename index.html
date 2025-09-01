@@ -23,43 +23,6 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Alternatives Panel -->
-            <section class="alternatives-section">
-                <div class="card">
-                    <h2><i class="fas fa-lightbulb"></i> Alternative Suggestions</h2>
-                    <p class="section-description">Feeling the urge to smoke? Try these alternatives to help delay or replace your next session.</p>
-                    
-                    <div class="alternatives-grid">
-                        <!-- Oral Fixation Alternatives -->
-                        <div class="alternative-category">
-                            <h3><i class="fas fa-mouth"></i> Oral Fixation Alternatives</h3>
-                            <p class="category-description">Satisfy your oral fixation with these healthier options:</p>
-                            <div class="suggestions-list" id="oralAlternatives">
-                                <!-- Will be populated by JavaScript -->
-                            </div>
-                        </div>
-
-                        <!-- General Alternatives -->
-                        <div class="alternative-category">
-                            <h3><i class="fas fa-heart"></i> General Alternatives</h3>
-                            <p class="category-description">Activities to distract and redirect your energy:</p>
-                            <div class="suggestions-list" id="generalAlternatives">
-                                <!-- Will be populated by JavaScript -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="alternatives-actions">
-                        <button class="btn btn-secondary" onclick="refreshAlternatives()">
-                            <i class="fas fa-sync-alt"></i> New Suggestions
-                        </button>
-                        <button class="btn btn-primary" onclick="markAsTried()">
-                            <i class="fas fa-check"></i> I Tried This
-                        </button>
-                    </div>
-                </div>
-            </section>
-
             <!-- Quick Add Section -->
             <section class="quick-add-section">
                 <div class="card">
@@ -242,6 +205,43 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Alternatives Panel -->
+            <section class="alternatives-section">
+                <div class="card">
+                    <h2><i class="fas fa-lightbulb"></i> Alternative Suggestions</h2>
+                    <p class="section-description">Feeling the urge to smoke? Try these alternatives to help delay or replace your next session.</p>
+                    
+                    <div class="alternatives-grid">
+                        <!-- Oral Fixation Alternatives -->
+                        <div class="alternative-category">
+                            <h3><i class="fas fa-mouth"></i> Oral Fixation Alternatives</h3>
+                            <p class="category-description">Satisfy your oral fixation with these healthier options:</p>
+                            <div class="suggestions-list" id="oralAlternatives">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- General Alternatives -->
+                        <div class="alternative-category">
+                            <h3><i class="fas fa-heart"></i> General Alternatives</h3>
+                            <p class="category-description">Activities to distract and redirect your energy:</p>
+                            <div class="suggestions-list" id="generalAlternatives">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alternatives-actions">
+                        <button class="btn btn-secondary" onclick="refreshAlternatives()">
+                            <i class="fas fa-sync-alt"></i> New Suggestions
+                        </button>
+                        <button class="btn btn-primary" onclick="markAsTried()">
+                            <i class="fas fa-check"></i> I Tried This
+                        </button>
+                    </div>
+                </div>
+            </section>
 
             <!-- Recent Entries -->
             <section class="entries-section">
