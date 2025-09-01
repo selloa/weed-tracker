@@ -8,9 +8,17 @@ class WeedTracker {
         this.settings = this.loadSettings();
         this.alternatives = this.loadAlternatives();
         this.charts = {}; // Store chart instances
-        this.currentChartIndex = 1; // Track current chart in compact view (1 = Time of Day)
+        this.currentChartIndex = 0; // Track current chart in compact view (0 = Daily Usage Trend)
         this.isExpanded = false; // Track expanded state
         this.timeManuallyChanged = false; // Track if user manually changed the time
+        
+        // Define chart types
+        this.chartTypes = [
+            { type: 'daily', title: 'Daily Usage Trend', icon: 'fas fa-calendar-day' },
+            { type: 'time', title: 'Usage by Time of Day', icon: 'fas fa-clock' },
+            { type: 'method', title: 'Method Distribution', icon: 'fas fa-smoking' }
+        ];
+        
         this.init();
     }
 
@@ -1480,10 +1488,9 @@ class WeedTracker {
     initializeCharts() {
         try {
             this.createCompactChart();
-            this.createWeeklyChart();
+            this.createDailyChart();
             this.createTimeChart();
             this.createMethodChart();
-            this.createMonthlyChart();
         } catch (error) {
             console.error('Error initializing charts:', error);
             this.showMessage('Failed to initialize charts. Some visualizations may not work.', 'error');
@@ -1514,7 +1521,7 @@ class WeedTracker {
     }
 
     cycleChartView() {
-        this.currentChartIndex = (this.currentChartIndex + 1) % 4;
+        this.currentChartIndex = (this.currentChartIndex + 1) % 3;
         this.updateCompactChart();
         this.showMessage('Switched to next chart view', 'success');
     }
@@ -1569,25 +1576,17 @@ class WeedTracker {
             this.charts.compact.destroy();
         }
 
-        const chartTypes = [
-            { type: 'weekly', title: 'Weekly Usage Trend', description: 'Shows your usage patterns over the last 8 weeks', icon: 'fas fa-calendar-week' },
-            { type: 'time', title: 'Usage by Time of Day', description: 'Shows when you use most throughout the day', icon: 'fas fa-clock' },
-            { type: 'method', title: 'Method Distribution', description: 'Shows your preferred consumption methods', icon: 'fas fa-smoking' },
-            { type: 'monthly', title: 'Monthly Overview', description: 'Shows your monthly usage trends', icon: 'fas fa-trending-up' }
-        ];
-
-        const currentChart = chartTypes[this.currentChartIndex];
+        const currentChart = this.chartTypes[this.currentChartIndex];
         
-        // Update title and description
+        // Update title
         document.getElementById('dynamicChartTitle').innerHTML = `<i class="${currentChart.icon}"></i> ${currentChart.title}`;
-        document.getElementById('currentChartDescription').textContent = currentChart.description;
 
         // Create chart based on current type
         let chartConfig;
         
         switch (currentChart.type) {
-            case 'weekly':
-                chartConfig = this.getCompactWeeklyConfig();
+            case 'daily':
+                chartConfig = this.getCompactDailyConfig();
                 break;
             case 'time':
                 chartConfig = this.getCompactTimeConfig();
@@ -1595,79 +1594,118 @@ class WeedTracker {
             case 'method':
                 chartConfig = this.getCompactMethodConfig();
                 break;
-            case 'monthly':
-                chartConfig = this.getCompactMonthlyConfig();
-                break;
         }
 
         this.charts.compact = new Chart(ctx, chartConfig);
+        
+        // Add click event listener to cycle through chart views
+        ctx.addEventListener('click', () => {
+            this.cycleChartView();
+        });
     }
 
-    createWeeklyChart() {
-        const ctx = document.getElementById('weeklyChart');
+    createDailyChart() {
+        const ctx = document.getElementById('dailyChart');
         if (!ctx) return;
 
-        const data = this.getWeeklyData();
+        const data = this.getDailyData();
         
-        this.charts.weekly = new Chart(ctx, {
+        this.charts.daily = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: data.labels,
                 datasets: [{
-                    label: 'Amount (g)',
-                    data: data.amounts,
+                    label: 'Consumption Trend',
+                    data: data.points,
                     borderColor: '#667eea',
                     backgroundColor: 'rgba(102, 126, 234, 0.1)',
                     borderWidth: 3,
                     fill: true,
-                    tension: 0.4
-                }, {
-                    label: 'Entries',
-                    data: data.counts,
-                    borderColor: '#f56565',
-                    backgroundColor: 'rgba(245, 101, 101, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
                     tension: 0.4,
-                    yAxisID: 'y1'
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#667eea',
+                    pointRadius: 6,
+                    pointHoverRadius: 8
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 16,
+                        bottom: 16,
+                        left: 16,
+                        right: 16
+                    }
+                },
                 plugins: {
                     legend: {
                         position: 'top',
                     },
                     tooltip: {
-                        mode: 'index',
-                        intersect: false,
+                        callbacks: {
+                            title: function(context) {
+                                const point = context[0];
+                                const date = new Date(point.parsed.x);
+                                return date.toLocaleString();
+                            },
+                            label: function(context) {
+                                return `Amount: ${context.parsed.y}g`;
+                            }
+                        }
                     }
                 },
                 scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'hour',
+                            displayFormats: {
+                                hour: 'HH:mm'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Time (Last 48 Hours)'
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.1)',
+                            lineWidth: 1
+                        },
+                        ticks: {
+                            callback: function(value, index, values) {
+                                const date = new Date(value);
+                                const hour = date.getHours();
+                                
+                                // Use hour numbers for time display
+                                if (hour === 0) return '0';
+                                if (hour === 6) return '6';
+                                if (hour === 12) return '12';
+                                if (hour === 18) return '18';
+                                return '';
+                            }
+                        }
+                    },
                     y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
+                        beginAtZero: true,
                         title: {
                             display: true,
                             text: 'Amount (g)'
-                        }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Entries'
                         },
                         grid: {
-                            drawOnChartArea: false,
-                        },
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.1)',
+                            lineWidth: 1
+                        }
                     }
                 }
             }
+        });
+        
+        // Add click event listener to cycle through chart views
+        ctx.addEventListener('click', () => {
+            this.cycleChartView();
         });
     }
 
@@ -1722,6 +1760,11 @@ class WeedTracker {
                 }
             }
         });
+        
+        // Add click event listener to cycle through chart views
+        ctx.addEventListener('click', () => {
+            this.cycleChartView();
+        });
     }
 
     createMethodChart() {
@@ -1759,54 +1802,40 @@ class WeedTracker {
                 }
             }
         });
-    }
-
-    createMonthlyChart() {
-        const ctx = document.getElementById('monthlyChart');
-        if (!ctx) return;
-
-        const data = this.getMonthlyData();
         
-        this.charts.monthly = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.labels,
-                datasets: [{
-                    label: 'Total Amount (g)',
-                    data: data.amounts,
-                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                    borderColor: '#667eea',
-                    borderWidth: 1
-                }, {
-                    label: 'Total Entries',
-                    data: data.counts,
-                    backgroundColor: 'rgba(245, 101, 101, 0.8)',
-                    borderColor: '#f56565',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Amount (g) / Entries'
-                        }
-                    }
-                }
-            }
+        // Add click event listener to cycle through chart views
+        ctx.addEventListener('click', () => {
+            this.cycleChartView();
         });
     }
 
+
+
     // Data preparation methods for charts
+    getDailyData() {
+        const now = new Date();
+        const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+        
+        // Filter entries from last 48 hours
+        const recentEntries = this.entries.filter(entry => {
+            const entryDate = new Date(entry.timestamp);
+            return entryDate >= fortyEightHoursAgo && entryDate <= now;
+        });
+        
+        // Convert to scatter plot data points
+        const points = recentEntries.map(entry => ({
+            x: new Date(entry.timestamp),
+            y: entry.amount
+        }));
+        
+        // If no data, show empty chart
+        if (points.length === 0) {
+            return { points: [] };
+        }
+        
+        return { points };
+    }
+
     getWeeklyData() {
         const weeks = [];
         const amounts = [];
@@ -1890,79 +1919,97 @@ class WeedTracker {
         return { labels, values };
     }
 
-    getMonthlyData() {
-        const months = [];
-        const amounts = [];
-        const counts = [];
-        
-        // Get last 6 months
-        for (let i = 5; i >= 0; i--) {
-            const date = new Date();
-            date.setMonth(date.getMonth() - i);
-            const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
-            const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-            
-            const monthEntries = this.entries.filter(entry => {
-                const entryDate = new Date(entry.timestamp);
-                return entryDate >= monthStart && entryDate <= monthEnd;
-            });
-            
-            const monthAmount = monthEntries.reduce((sum, entry) => sum + entry.amount, 0);
-            const monthCount = monthEntries.length;
-            
-            months.push(date.toLocaleDateString('en-US', { month: 'short' }));
-            amounts.push(monthAmount);
-            counts.push(monthCount);
-        }
-        
-        // If no data, show empty chart
-        if (amounts.every(amount => amount === 0)) {
-            return { 
-                labels: months, 
-                amounts: [0, 0, 0, 0, 0, 0], 
-                counts: [0, 0, 0, 0, 0, 0] 
-            };
-        }
-        
-        return { labels: months, amounts, counts };
-    }
+
 
     // Compact chart configurations
-    getCompactWeeklyConfig() {
-        const data = this.getWeeklyData();
+    getCompactDailyConfig() {
+        const data = this.getDailyData();
         return {
             type: 'line',
             data: {
-                labels: data.labels,
                 datasets: [{
-                    label: 'Amount (g)',
-                    data: data.amounts,
+                    label: 'Consumption Trend',
+                    data: data.points,
                     borderColor: '#667eea',
                     backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                    borderWidth: 2,
+                    borderWidth: 3,
                     fill: true,
-                    tension: 0.4
+                    tension: 0.4,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#667eea',
+                    pointRadius: 6,
+                    pointHoverRadius: 8
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 2,
+                        bottom: 2,
+                        left: 2,
+                        right: 2
+                    }
+                },
                 plugins: {
                     legend: {
                         display: false
                     },
                     tooltip: {
-                        mode: 'index',
-                        intersect: false,
+                        callbacks: {
+                            title: function(context) {
+                                const point = context[0];
+                                const date = new Date(point.parsed.x);
+                                return date.toLocaleString();
+                            },
+                            label: function(context) {
+                                return `Amount: ${context.parsed.y}g`;
+                            }
+                        }
                     }
                 },
                 scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'hour',
+                            displayFormats: {
+                                hour: 'HH:mm'
+                            }
+                        },
+                        title: {
+                            display: false
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.1)',
+                            lineWidth: 1
+                        },
+                        ticks: {
+                            callback: function(value, index, values) {
+                                const date = new Date(value);
+                                const hour = date.getHours();
+                                
+                                // Use hour numbers for time display
+                                if (hour === 0) return '0';
+                                if (hour === 6) return '6';
+                                if (hour === 12) return '12';
+                                if (hour === 18) return '18';
+                                return '';
+                            }
+                        }
+                    },
                     y: {
                         beginAtZero: true,
-                        display: false
-                    },
-                    x: {
-                        display: false
+                        title: {
+                            display: false
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.1)',
+                            lineWidth: 1
+                        }
                     }
                 }
             }
@@ -2032,40 +2079,7 @@ class WeedTracker {
         };
     }
 
-    getCompactMonthlyConfig() {
-        const data = this.getMonthlyData();
-        return {
-            type: 'bar',
-            data: {
-                labels: data.labels,
-                datasets: [{
-                    label: 'Amount (g)',
-                    data: data.amounts,
-                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                    borderColor: '#667eea',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        display: false
-                    },
-                    x: {
-                        display: false
-                    }
-                }
-            }
-        };
-    }
+
 }
 
 // Global functions for HTML onclick handlers

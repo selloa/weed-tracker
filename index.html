@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 </head>
 <body>
     <div class="app-container">
@@ -174,9 +175,11 @@
                     <!-- Streak Counter -->
                     <div class="card dashboard-card">
                         <h3><i class="fas fa-fire"></i> Current Streak</h3>
-                        <div class="streak-info">
-                            <span class="streak-number" id="currentStreak">0</span>
-                            <span class="streak-label">days</span>
+                        <div class="streak-box">
+                            <div class="streak-info">
+                                <span class="streak-number" id="currentStreak">0</span>
+                                <span class="streak-label">days</span>
+                            </div>
                         </div>
                         <p id="streakType">No streak yet</p>
                     </div>
@@ -184,32 +187,28 @@
                     <!-- Time Since Last Joint -->
                     <div class="card dashboard-card">
                         <h3><i class="fas fa-clock"></i> Time Since Last Usage</h3>
-                        <div class="time-since-info">
-                            <span class="time-since-number" id="timeSinceNumber">0</span>
-                            <span class="time-since-label" id="timeSinceLabel">hours</span>
+                        <div class="time-since-box">
+                            <div class="time-since-info">
+                                <span class="time-since-number" id="timeSinceNumber">0</span>
+                                <span class="time-since-label" id="timeSinceLabel">hours</span>
+                            </div>
                         </div>
                         <p id="timeSinceText">No entries yet</p>
                     </div>
 
                     <!-- Statistics Graph Panel -->
                     <div class="card dashboard-card statistics-card">
-                        <h3 id="dynamicChartTitle"><i class="fas fa-clock"></i> Usage by Time of Day</h3>
+                        <div class="chart-header">
+                            <h3 id="dynamicChartTitle"><i class="fas fa-clock"></i> Usage by Time of Day</h3>
+                            <button class="btn btn-secondary btn-sm expand-btn" onclick="tracker.toggleExpandedView()" title="Toggle expanded view">
+                                <i class="fas fa-expand" id="expandIcon"></i>
+                            </button>
+                        </div>
                         
                         <!-- Compact View -->
                         <div class="compact-view" id="compactView">
-                            <div class="chart-info">
-                                <p id="currentChartDescription">Shows when you use most throughout the day</p>
-                            </div>
                             <div class="compact-chart-container">
                                 <canvas id="compactChart"></canvas>
-                            </div>
-                            <div class="statistics-controls">
-                                <button class="btn btn-secondary btn-sm" onclick="tracker.cycleChartView()" title="Cycle through chart views">
-                                    <i class="fas fa-rotate"></i>
-                                </button>
-                                <button class="btn btn-secondary btn-sm" onclick="tracker.toggleExpandedView()" title="Toggle expanded view">
-                                    <i class="fas fa-expand" id="expandIcon"></i>
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -220,31 +219,25 @@
             <div class="expanded-view" id="expandedView" style="display: none;">
                 <div class="graphs-container">
                     <div class="graph-row">
-                        <div class="graph-card">
-                            <h3><i class="fas fa-calendar-week"></i> Weekly Usage Trend</h3>
-                            <div class="chart-container">
-                                <canvas id="weeklyChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="graph-card">
-                            <h3><i class="fas fa-clock"></i> Usage by Time of Day</h3>
-                            <div class="chart-container">
-                                <canvas id="timeChart"></canvas>
+                        <div class="graph-card landscape">
+                            <h3><i class="fas fa-calendar-day"></i> Daily Usage Trend</h3>
+                            <div class="chart-container landscape">
+                                <canvas id="dailyChart"></canvas>
                             </div>
                         </div>
                     </div>
                     <div class="graph-row">
-                        <div class="graph-card">
-                            <h3><i class="fas fa-smoking"></i> Method Distribution</h3>
-                            <div class="chart-container">
-                                <canvas id="methodChart"></canvas>
+                        <div class="graph-card landscape">
+                            <h3><i class="fas fa-clock"></i> Usage by Time of Day</h3>
+                            <div class="chart-container landscape">
+                                <canvas id="timeChart"></canvas>
                             </div>
                         </div>
-                        <div class="graph-card">
-                            <h3><i class="fas fa-trending-up"></i> Monthly Overview</h3>
-                            <div class="chart-container">
-                                <canvas id="monthlyChart"></canvas>
-                            </div>
+                    </div>
+                    <div class="graph-card landscape">
+                        <h3><i class="fas fa-smoking"></i> Method Distribution</h3>
+                        <div class="chart-container landscape">
+                            <canvas id="methodChart"></canvas>
                         </div>
                     </div>
                 </div>
