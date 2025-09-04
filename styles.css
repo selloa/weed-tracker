@@ -42,12 +42,12 @@
     --bg-hover: #4a5568;
     --bg-input: #4a5568;
     
-    --text-primary: #e2e8f0;
-    --text-secondary: #f7fafc;
+    --text-primary: #f7fafc;
+    --text-secondary: #ffffff;
     --text-tertiary: #e2e8f0;
     --text-quaternary: #cbd5e0;
     --text-muted: #a0aec0;
-    --text-inverse: #1a202c;
+    --text-inverse: #ffffff;
     
     --border-primary: #4a5568;
     --border-secondary: #718096;
@@ -108,6 +108,10 @@ body {
     font-weight: 700;
     margin-bottom: 10px;
     text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+[data-theme="dark"] .header h1 {
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
 }
 
 .header .subtitle {
