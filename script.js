@@ -11,6 +11,7 @@ class WeedTracker {
         this.currentChartIndex = 0; // Track current chart in compact view (0 = Daily Usage Trend)
         this.isExpanded = false; // Track expanded state
         this.timeManuallyChanged = false; // Track if user manually changed the time
+        this.darkMode = this.loadDarkMode(); // Load dark mode preference
         
         // Define chart types
         this.chartTypes = [
@@ -25,6 +26,7 @@ class WeedTracker {
     init() {
         this.setupEventListeners();
         this.setDefaultDateTime();
+        this.initializeDarkMode(); // Initialize dark mode
         this.updateDashboard();
         this.renderEntries();
         this.renderAlternatives();
@@ -156,6 +158,108 @@ class WeedTracker {
             triedItems: [],
             lastRefresh: null
         };
+    }
+
+    // Dark Mode Management
+    loadDarkMode() {
+        try {
+            const saved = localStorage.getItem('weedTrackerDarkMode');
+            if (saved === null) {
+                // Default to system preference
+                return window.matchMedia('(prefers-color-scheme: dark)').matches;
+            }
+            return saved === 'true';
+        } catch (error) {
+            console.error('Failed to load dark mode preference:', error);
+            return false; // Default to light mode
+        }
+    }
+
+    saveDarkMode() {
+        try {
+            localStorage.setItem('weedTrackerDarkMode', this.darkMode.toString());
+        } catch (error) {
+            console.error('Failed to save dark mode preference:', error);
+        }
+    }
+
+    initializeDarkMode() {
+        this.applyDarkMode(this.darkMode);
+        this.updateDarkModeIcon();
+    }
+
+    toggleDarkMode() {
+        this.darkMode = !this.darkMode;
+        this.applyDarkMode(this.darkMode);
+        this.updateDarkModeIcon();
+        this.saveDarkMode();
+        this.updateChartsForDarkMode(); // Update chart colors
+        this.showMessage(this.darkMode ? 'Dark mode enabled' : 'Light mode enabled', 'success');
+    }
+
+    applyDarkMode(isDark) {
+        const body = document.body;
+        if (isDark) {
+            body.setAttribute('data-theme', 'dark');
+        } else {
+            body.removeAttribute('data-theme');
+        }
+    }
+
+    updateDarkModeIcon() {
+        const icon = document.getElementById('darkModeIcon');
+        if (icon) {
+            icon.className = this.darkMode ? 'fas fa-sun' : 'fas fa-moon';
+        }
+    }
+
+    updateChartsForDarkMode() {
+        // Destroy and recreate charts with new colors
+        Object.values(this.charts).forEach(chart => {
+            if (chart && typeof chart.destroy === 'function') {
+                try {
+                    chart.destroy();
+                } catch (error) {
+                    console.error('Error destroying chart:', error);
+                }
+            }
+        });
+        this.charts = {};
+        
+        // Recreate charts with new color scheme
+        this.initializeCharts();
+    }
+
+    getChartColors() {
+        if (this.darkMode) {
+            return {
+                primary: '#81c784',
+                secondary: '#4fc3f7',
+                success: '#66bb6a',
+                danger: '#ef5350',
+                warning: '#ffb74d',
+                info: '#42a5f5',
+                accent: '#9c27b0',
+                background: 'rgba(129, 199, 132, 0.1)',
+                border: '#81c784',
+                text: '#e2e8f0',
+                grid: 'rgba(255, 255, 255, 0.1)'
+            };
+        } else {
+            return {
+                primary: '#667eea',
+                secondary: '#764ba2',
+                success: '#48bb78',
+                danger: '#e53e3e',
+                warning: '#ed8936',
+                info: '#3182ce',
+                accent: '#9f7aea',
+                background: 'rgba(102, 126, 234, 0.1)',
+                border: '#667eea',
+                text: '#333',
+                grid: 'rgba(0, 0, 0, 0.1)'
+            };
+        }
     }
 
     // Data Validation Methods
@@ -327,6 +431,14 @@ class WeedTracker {
                 e.target.style.display = 'none';
             }
         });
+
+        // Dark mode toggle
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        if (darkModeToggle) {
+            darkModeToggle.addEventListener('click', () => {
+                this.toggleDarkMode();
+            });
+        }
     }
 
     // Entry Management with Validation and Sanitization
@@ -1615,6 +1727,7 @@ class WeedTracker {
         if (!ctx) return;
 
         const data = this.getDailyData();
+        const colors = this.getChartColors();
         
         this.charts.daily = new Chart(ctx, {
             type: 'line',
@@ -1622,13 +1735,13 @@ class WeedTracker {
                 datasets: [{
                     label: 'Consumption Trend',
                     data: data.points,
-                    borderColor: '#667eea',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderColor: colors.primary,
+                    backgroundColor: colors.background,
                     borderWidth: 3,
                     fill: true,
                     tension: 0.4,
-                    pointBackgroundColor: '#667eea',
-                    pointBorderColor: '#667eea',
+                    pointBackgroundColor: colors.primary,
+                    pointBorderColor: colors.primary,
                     pointRadius: 6,
                     pointHoverRadius: 8
                 }]
@@ -1676,7 +1789,7 @@ class WeedTracker {
                         },
                         grid: {
                             display: true,
-                            color: 'rgba(0, 0, 0, 0.1)',
+                            color: colors.grid,
                             lineWidth: 1
                         },
                         ticks: {
@@ -1701,7 +1814,7 @@ class WeedTracker {
                         },
                         grid: {
                             display: true,
-                            color: 'rgba(0, 0, 0, 0.1)',
+                            color: colors.grid,
                             lineWidth: 1
                         }
                     }
@@ -1720,6 +1833,7 @@ class WeedTracker {
         if (!ctx) return;
 
         const data = this.getTimeOfDayData();
+        const colors = this.getChartColors();
         
         this.charts.time = new Chart(ctx, {
             type: 'bar',
@@ -1729,20 +1843,20 @@ class WeedTracker {
                     label: 'Usage Frequency',
                     data: data.values,
                     backgroundColor: [
-                        'rgba(102, 126, 234, 0.8)',
-                        'rgba(245, 101, 101, 0.8)',
-                        'rgba(72, 187, 120, 0.8)',
-                        'rgba(237, 137, 54, 0.8)',
-                        'rgba(159, 122, 234, 0.8)',
-                        'rgba(236, 72, 153, 0.8)'
+                        colors.primary + 'CC',
+                        colors.danger + 'CC',
+                        colors.success + 'CC',
+                        colors.warning + 'CC',
+                        colors.accent + 'CC',
+                        colors.info + 'CC'
                     ],
                     borderColor: [
-                        '#667eea',
-                        '#f56565',
-                        '#48bb78',
-                        '#ed8936',
-                        '#9f7aea',
-                        '#ec4899'
+                        colors.primary,
+                        colors.danger,
+                        colors.success,
+                        colors.warning,
+                        colors.accent,
+                        colors.info
                     ],
                     borderWidth: 1
                 }]
@@ -1778,6 +1892,7 @@ class WeedTracker {
         if (!ctx) return;
 
         const data = this.getMethodData();
+        const colors = this.getChartColors();
         
         this.charts.method = new Chart(ctx, {
             type: 'doughnut',
@@ -1786,16 +1901,16 @@ class WeedTracker {
                 datasets: [{
                     data: data.values,
                     backgroundColor: [
-                        '#667eea',
-                        '#f56565',
-                        '#48bb78',
-                        '#ed8936',
-                        '#9f7aea',
-                        '#ec4899',
-                        '#38b2ac'
+                        colors.primary,
+                        colors.danger,
+                        colors.success,
+                        colors.warning,
+                        colors.accent,
+                        colors.info,
+                        colors.secondary
                     ],
                     borderWidth: 2,
-                    borderColor: '#ffffff'
+                    borderColor: colors.background
                 }]
             },
             options: {
@@ -1932,19 +2047,20 @@ class WeedTracker {
     // Compact chart configurations
     getCompactDailyConfig() {
         const data = this.getDailyData();
+        const colors = this.getChartColors();
         return {
             type: 'line',
             data: {
                 datasets: [{
                     label: 'Consumption Trend',
                     data: data.points,
-                    borderColor: '#667eea',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderColor: colors.primary,
+                    backgroundColor: colors.background,
                     borderWidth: 3,
                     fill: true,
                     tension: 0.4,
-                    pointBackgroundColor: '#667eea',
-                    pointBorderColor: '#667eea',
+                    pointBackgroundColor: colors.primary,
+                    pointBorderColor: colors.primary,
                     pointRadius: 6,
                     pointHoverRadius: 8
                 }]
@@ -1991,7 +2107,7 @@ class WeedTracker {
                         },
                         grid: {
                             display: true,
-                            color: 'rgba(0, 0, 0, 0.1)',
+                            color: colors.grid,
                             lineWidth: 1
                         },
                         ticks: {
@@ -2015,7 +2131,7 @@ class WeedTracker {
                         },
                         grid: {
                             display: true,
-                            color: 'rgba(0, 0, 0, 0.1)',
+                            color: colors.grid,
                             lineWidth: 1
                         }
                     }
@@ -2026,6 +2142,7 @@ class WeedTracker {
 
     getCompactTimeConfig() {
         const data = this.getTimeOfDayData();
+        const colors = this.getChartColors();
         return {
             type: 'doughnut',
             data: {
@@ -2033,13 +2150,13 @@ class WeedTracker {
                 datasets: [{
                     data: data.values,
                     backgroundColor: [
-                        'rgba(102, 126, 234, 0.8)',
-                        'rgba(245, 101, 101, 0.8)',
-                        'rgba(72, 187, 120, 0.8)',
-                        'rgba(237, 137, 54, 0.8)'
+                        colors.primary + 'CC',
+                        colors.danger + 'CC',
+                        colors.success + 'CC',
+                        colors.warning + 'CC'
                     ],
                     borderWidth: 1,
-                    borderColor: '#ffffff'
+                    borderColor: colors.background
                 }]
             },
             options: {
@@ -2056,6 +2173,7 @@ class WeedTracker {
 
     getCompactMethodConfig() {
         const data = this.getMethodData();
+        const colors = this.getChartColors();
         return {
             type: 'doughnut',
             data: {
@@ -2063,16 +2181,16 @@ class WeedTracker {
                 datasets: [{
                     data: data.values,
                     backgroundColor: [
-                        '#667eea',
-                        '#f56565',
-                        '#48bb78',
-                        '#ed8936',
-                        '#9f7aea',
-                        '#ec4899',
-                        '#38b2ac'
+                        colors.primary,
+                        colors.danger,
+                        colors.success,
+                        colors.warning,
+                        colors.accent,
+                        colors.info,
+                        colors.secondary
                     ],
                     borderWidth: 1,
-                    borderColor: '#ffffff'
+                    borderColor: colors.background
                 }]
             },
             options: {
