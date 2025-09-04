@@ -53,8 +53,9 @@ class WeedTracker {
                 return [];
             }
             
-            // Validate each entry
-            return parsed.filter(entry => this.validateEntry(entry));
+            // Validate each entry and sort by consumption timestamp
+            const validEntries = parsed.filter(entry => this.validateEntry(entry));
+            return validEntries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         }, []);
     }
 
@@ -394,7 +395,9 @@ class WeedTracker {
                 return;
             }
 
-            this.entries.unshift(entry);
+            this.entries.push(entry);
+            // Sort entries by consumption timestamp (most recent first)
+            this.entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             this.saveEntries();
             
             // Reset form
@@ -701,8 +704,11 @@ class WeedTracker {
                 return;
             }
 
-            // Filter out invalid entries and create HTML
-            const validEntries = this.entries.slice(0, 20).filter(entry => this.validateEntry(entry));
+            // Filter out invalid entries, sort by consumption timestamp, and create HTML
+            const validEntries = this.entries
+                .filter(entry => this.validateEntry(entry))
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .slice(0, 20);
             container.innerHTML = validEntries.map(entry => this.createEntryHTML(entry)).join('');
         } catch (error) {
             console.error('Error rendering entries:', error);
@@ -1816,11 +1822,13 @@ class WeedTracker {
         const now = new Date();
         const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
         
-        // Filter entries from last 48 hours
-        const recentEntries = this.entries.filter(entry => {
-            const entryDate = new Date(entry.timestamp);
-            return entryDate >= fortyEightHoursAgo && entryDate <= now;
-        });
+        // Filter entries from last 48 hours and sort by consumption timestamp
+        const recentEntries = this.entries
+            .filter(entry => {
+                const entryDate = new Date(entry.timestamp);
+                return entryDate >= fortyEightHoursAgo && entryDate <= now;
+            })
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)); // Sort chronologically for chart
         
         // Convert to scatter plot data points
         const points = recentEntries.map(entry => ({
