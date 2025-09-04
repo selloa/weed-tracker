@@ -26,11 +26,15 @@ class WeedTracker {
     init() {
         this.setupEventListeners();
         this.setDefaultDateTime();
-        this.initializeDarkMode(); // Initialize dark mode
         this.updateDashboard();
         this.renderEntries();
         this.renderAlternatives();
         this.initializeCharts(); // Initialize charts
+        
+        // Initialize dark mode after DOM is ready
+        setTimeout(() => {
+            this.initializeDarkMode();
+        }, 100);
         
         // Start timer to update time since last joint every minute
         setInterval(() => {
@@ -184,12 +188,16 @@ class WeedTracker {
     }
 
     initializeDarkMode() {
+        console.log('Initializing dark mode, current state:', this.darkMode);
         this.applyDarkMode(this.darkMode);
         this.updateDarkModeIcon();
+        console.log('Dark mode initialized');
     }
 
     toggleDarkMode() {
+        console.log('Toggling dark mode from:', this.darkMode);
         this.darkMode = !this.darkMode;
+        console.log('New dark mode state:', this.darkMode);
         this.applyDarkMode(this.darkMode);
         this.updateDarkModeIcon();
         this.saveDarkMode();
@@ -199,17 +207,25 @@ class WeedTracker {
 
     applyDarkMode(isDark) {
         const body = document.body;
+        console.log('Applying dark mode:', isDark);
         if (isDark) {
             body.setAttribute('data-theme', 'dark');
+            console.log('Added data-theme="dark" to body');
         } else {
             body.removeAttribute('data-theme');
+            console.log('Removed data-theme attribute from body');
         }
     }
 
     updateDarkModeIcon() {
         const icon = document.getElementById('darkModeIcon');
+        console.log('Updating dark mode icon, found element:', !!icon);
         if (icon) {
-            icon.className = this.darkMode ? 'fas fa-sun' : 'fas fa-moon';
+            const newClass = this.darkMode ? 'fas fa-sun' : 'fas fa-moon';
+            icon.className = newClass;
+            console.log('Updated icon class to:', newClass);
+        } else {
+            console.error('Dark mode icon element not found!');
         }
     }
 
@@ -434,10 +450,15 @@ class WeedTracker {
 
         // Dark mode toggle
         const darkModeToggle = document.getElementById('darkModeToggle');
+        console.log('Setting up dark mode toggle, found element:', !!darkModeToggle);
         if (darkModeToggle) {
             darkModeToggle.addEventListener('click', () => {
+                console.log('Dark mode toggle clicked!');
                 this.toggleDarkMode();
             });
+            console.log('Dark mode toggle event listener added');
+        } else {
+            console.error('Dark mode toggle button not found!');
         }
     }
 
